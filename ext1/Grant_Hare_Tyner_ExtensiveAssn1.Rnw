@@ -1,0 +1,333 @@
+\documentclass[11pt]{article}
+
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{float}
+\usepackage{amsmath}
+
+\begin{document}
+<<concordance, echo=FALSE>>=
+opts_chunk$set(concordance=TRUE)
+opts_knit$set(self.contained=FALSE)
+@
+
+<<libraries, cache=FALSE, echo=FALSE, message=FALSE, warning=FALSE>>=
+library(pscl)
+library(plyr)
+library(ggplot2)
+library(reshape2)
+library(xtable)
+@
+
+\setlength{\parskip}{3ex}
+\setlength{\parindent}{0pt}
+
+\title{Extensive Assignment 1}
+\author{Millicent Grant, Eric Hare, Samantha Tyner}
+
+\maketitle
+
+\clearpage
+
+<<readthedata, echo=FALSE>>=
+bean.data <- read.table("greenbeandat.txt", header = TRUE)
+
+## Remove unnecessary columns
+## Exclude stores in 7000s based on MLEs being ridiculous
+bean.data <- bean.data[,-c(2, 6, 7)]
+bean.data <- subset(bean.data, store < 7000)
+
+bean.indiv <- subset(bean.data, store == 1039)
+@
+
+\setcounter{page}{1}
+
+\section{Exploratory Analysis}
+
+<<price_plot, message=FALSE>>=
+qplot(mvm, data = bean.indiv, geom = "histogram") + facet_wrap(~price)
+@
+
+\section{Simple Poisson}
+
+\subsection{Model Formulation}
+
+\subsection{Maximum Likelihood Estimation}
+<<sip>>=
+par <- c(5, -0.5)
+
+pois.func <- function(y, mu) {
+    return(exp(-mu) * mu^y * (1 / factorial(y)))
+}
+
+fnsip <- function(par, y, x) {
+    mu <- exp(par[1] + par[2]*x)
+    return(sum(log(pois.func(y, mu))))
+}
+
+fnsiplog <- function(par, y, x) {
+    mu <- exp(par[1] + par[2]*x)
+    return(sum(-mu + y*log(mu) - lfactorial(y)))
+}
+
+stores <- unique(bean.data$store)[3:14]
+
+prices <- seq(min(subset(bean.data, store %in% stores)$price) - .1, max(subset(bean.data, store %in% stores)$price) + .1, by = 0.01)
+sip.stores <- ldply(stores, function(sto) {
+    x <- subset(bean.data, store == sto)$price
+    y <- subset(bean.data, store == sto)$mvm
+    
+    lik <- optim(par = par, fn = fnsiplog, y = y, x = x, control = list(fnscale = -1))
+    
+    data.frame(Store = sto, Price = prices, PredictedSales = exp(lik$par[1] + lik$par[2]*prices))
+})
+
+qplot(Price, PredictedSales, data = subset(sip.stores, Store == stores[6]), geom = "blank") +
+    geom_line(colour = "red", size = 2) +
+    geom_point(data = subset(bean.data, store == stores[4]), aes(x = price, y = mvm))
+@
+
+\subsection{Comparison to glm}
+<<glm, results='asis'>>=
+glm.model <- glm(mvm ~ price, data = subset(bean.data, store == stores[6]), family = "poisson")
+
+sto <- stores[6]
+x <- subset(bean.data, store == sto)$price
+y <- subset(bean.data, store == sto)$mvm
+
+lik <- optim(par = par, fn = fnsiplog, y = y, x = x, control = list(fnscale = -1))
+
+glm.par <- glm.model$coefficients
+glm.par <- as.numeric(glm.par)
+
+my.df <- data.frame(OurModel = lik$par, GLM = glm.par)
+print(xtable(my.df, digits = 6), table.position = 'H')
+@
+
+\section{Zero-Inflated Poisson}
+
+\subsection{Model Formulation}
+
+\subsection{Maximum Likelihood Estimation}
+<<zip>>=
+par <- c(1, 1, 5, -0.5)
+
+fnz <- function(par, y, x) {
+    b0 <- par[1]
+    b1 <- par[2]
+    d0 <- par[3]
+    d1 <- par[4]
+    
+    pi <- exp(b0 + b1*x) / (1 + exp(b0 + b1*x))
+    lambda <- exp(d0 + d1*x)
+    
+    single <- ((y == 0) * log((1 - pi) + pi*exp(-lambda))) +
+              ((y > 0) * (log(pi) + y*log(lambda) - lambda))
+    
+    return(single)
+}
+
+fnzip <- function(par, y, x) {
+    #yuck <- ((log(1 + pi*(exp(-lambda) - 1)) * (y == 0)) +
+    #       (log(pi) - lambda + sum(y * log(lambda)) + sum(1 / factorial(y))) * (y > 0))
+    
+    return(sum(fnz(par, y, x)))
+}
+
+stores <- unique(bean.data$store)
+zip.stores <- ldply(stores, function(sto) {
+    x <- subset(bean.data, store == sto)$price
+    y <- subset(bean.data, store == sto)$mvm
+    
+    lik <- optim(par = par, fn = fnzip, y = y, x = x, control = list(fnscale = -1))
+    
+    data.frame(Store = sto, Price = prices, PredictedSales = (exp(lik$par[1] + lik$par[2]*prices) / (1 + exp(lik$par[1] + lik$par[2]*prices))) * (exp(lik$par[3] + lik$par[4] * prices)))
+})
+
+qplot(Price, PredictedSales, data = subset(zip.stores, Store == stores[6]), geom = "blank") +
+    geom_line(colour = "green", size = 2) +
+    geom_point(data = subset(bean.data, store == stores[6]), aes(x = price, y = mvm))
+@
+
+<<zip_mles, results='asis'>>=
+zip.mles <- ldply(stores, function(sto) {
+    x <- subset(bean.data, store == sto)$price
+    y <- subset(bean.data, store == sto)$mvm
+    
+    lik <- optim(par = par, fn = fnzip, y = y, x = x, control = list(fnscale = -1))
+    
+    c(sto, lik$par)
+})
+names(zip.mles) <- c("store", "b0", "b1", "d0", "d1")
+
+print(xtable(zip.mles, digits = c(0, 4, 4, 4, 4, 0)), table.position = 'H')
+@
+
+\subsection{Comparison to pscl}
+
+<<zip_model, results='asis'>>=
+sto <- stores[6]
+x <- subset(bean.data, store == sto)$price
+y <- subset(bean.data, store == sto)$mvm
+
+lik <- optim(par = par, fn = fnzip, y = y, x = x, control = list(fnscale = -1))
+
+pscl.zip <- zeroinfl(mvm ~ price, data = subset(bean.data, store == sto), dist = "poisson")
+
+pscl.par <- c(pscl.zip$coefficients$zero[1], pscl.zip$coefficients$zero[2], pscl.zip$coefficients$count[1], pscl.zip$coefficients$count[2])
+pscl.par <- as.numeric(pscl.par)
+
+my.df <- data.frame(OurModel = lik$par, PSCL = pscl.par)
+print(xtable(my.df, digits = 6), table.position = 'H')
+@
+
+\section{Zero-Inflated Gamma-Poisson}
+
+\subsection{Model Formulation}
+$Y_i|\lambda_i \sim \text{independent Poisson}(\lambda_i)$ \\
+$\lambda_i|\alpha,\beta \sim \text{iid Gamma}(\alpha, \beta)$ \\
+
+\begin{align*}
+h(y_i | \alpha, \beta) &= \int f(y_i | \lambda_i, p)g(\lambda_i | \alpha,\beta)d\lambda_i \\
+                       &= \frac{\beta^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i}e^{-\lambda_i}\lambda_i^{\alpha - 1}e^{-\beta\lambda_i}d\lambda_i \\
+                       &= \frac{\beta^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i + \alpha - 1}e^{-\lambda_i(\beta + 1)}d\lambda_i \\
+                       &= \frac{\beta^{\alpha}\Gamma{(\alpha + y_i)}}{y_i!\Gamma{(\alpha)}(\beta + 1)^{\alpha + y_i}}
+\end{align*}
+
+<<test>>=
+alpha <- 20
+beta <- 5
+y <- bean.indiv$mvm
+
+gammapois <- function(y, alpha, beta) {
+    return((beta^alpha * gamma(alpha + y)) / (factorial(y) * gamma(alpha) * (beta + 1)^(alpha + y)))
+}
+
+my.df <- data.frame(x = 0:20, fn = gammapois(0:20, alpha, beta))
+
+qplot(x, fn, data = my.df, geom = "bar", stat = "identity")
+@
+
+\begin{align*}
+Pr(Y_i = 0 | \lambda_i, p) &= Pr(Y_i = 0 | Z_i = 0)Pr(Z_i = 0) + Pr(Y_i = 0 | Z_i = 1)Pr(Z_i = 1) \\
+            &= Pr(Z_i = 0) + Pr(Y_i = 0 | Z_i = 1)Pr(Z_i = 1) \\
+            &= (1 - \pi) + \pi(\frac{\beta}{\beta + 1})^\alpha \\
+\end{align*}
+
+\begin{align*}
+Pr(Y_i = y | \lambda_i, p) &= Pr(Y_i = y | Z_i = 0)Pr(Z_i = 0) + Pr(Y_i = y | Z_i = 1)Pr(Z_i = 1) \\
+            &= Pr(Y_i = y | Z_i = 1)Pr(Z_i = 1) \\
+            &= \pi\frac{\beta^{\alpha}\Gamma{(\alpha + y_i)}}{y_i!\Gamma{(\alpha)}(\beta + 1)^{\alpha + y_i}} \\
+            &= \pi{\alpha + y_i - 1 \choose y_i}\frac{\beta^{\alpha}}{(\beta + 1)^{\alpha + y_i}} \\
+            &= \pi{\alpha + y_i - 1 \choose y_i}(\frac{\beta}{\beta + 1})^{\alpha}(\frac{1}{\beta + 1})^{y_i}
+\end{align*}
+
+Hence, the full zero-inflated gamma-poisson distribution pmf is: \\
+
+$(1 - \pi) + \pi(\frac{\beta_i}{\beta_i + 1})^\alpha I(y_i = 0) + \pi{\alpha + y_i - 1 \choose y_i}(\frac{\beta_i}{\beta_i + 1})^{\alpha}(\frac{1}{\beta_i + 1})^{y_i}I(y_i > 0)$ \\
+
+$log(E(Y|x)) = \delta_0 + \delta_1x_i$ \\
+$\mu_i = E(Y|x) = e^{\delta_0 + \delta_1x_i} = \frac{\alpha}{\beta_i}$ \\
+$\pi = \frac{e^{\beta_0 + \beta_1x_i}}{1 + e^{\beta_0 + \beta_1x_i}}$
+
+\begin{align*}
+L(\alpha, \beta_i) &= (1 - \pi) + \pi(\frac{\beta_i}{\beta_i + 1})^\alpha I(y_i = 0) + \pi{\alpha + y_i - 1 \choose y_i}(\frac{\beta_i}{\beta_i + 1})^{\alpha}(\frac{1}{\beta_i + 1})^{y_i}I(y_i > 0) \\
+                   &= (1 - \pi) + \pi(\frac{\alpha}{\alpha + \mu_i})^\alpha I(y_i = 0) + \pi{\alpha + y_i - 1 \choose y_i}(\frac{\alpha}{\alpha + \mu_i})^{\alpha}(\frac{\mu_i}{\alpha + \mu_i})^{y_i}I(y_i > 0)
+\end{align*}
+
+\subsection{Parameter Estimation}
+
+<<test2>>=
+y <- bean.data$mvm
+x <- bean.data$price
+
+zigammapoisone <- function(y, mu, alpha, pi) {
+    return(((y == 0) * ((1 - pi) + pi*(alpha / (alpha + mu))^alpha)) +
+            ((y > 0) * pi*(choose(alpha + y - 1, y) * (alpha / (alpha + mu))^alpha * (mu / (alpha + mu))^y)))
+}
+
+fnzigp <- function(par, y, x, alpha) {
+    mu <- exp(par[3] + par[4]*x)
+    pi <- exp(par[1] + par[2]*x) / (1 + exp(par[1] + par[2]*x))
+    return(sum(log(zigammapoisone(y, mu, alpha, pi))))
+}
+
+fnzigplog <- function(par, y, x, alpha) {
+    mu <- exp(par[3] + par[4]*x)
+    pi <- exp(par[1] + par[2]*x) / (1 + exp(par[1] + par[2]*x))
+    return(sum((y == 0) * log((1 - pi) + pi*(alpha / (alpha + mu))^alpha) +
+               (y > 0) * (log(pi) + lchoose(alpha + y - 1, y) + alpha*log(alpha) - alpha * log(alpha + mu) + y * log(mu) - y * log(alpha + mu))))
+}
+
+fnzigpfixed <- function(par, y, x, fixedpar) {
+    mu <- exp(fixedpar[3] + fixedpar[4]*x)
+    pi <- exp(fixedpar[1] + fixedpar[2]*x) / (1 + exp(fixedpar[1] + fixedpar[2]*x))
+    return(sum((y == 0) * log((1 - pi) + pi*(par[1] / (par[1] + mu))^par[1]) +
+               (y > 0) * (log(pi) + lchoose(par[1] + y - 1, y) + par[1]*log(par[1]) - par[1] * log(par[1] + mu) + y * log(mu) - y * log(par[1] + mu))))
+}
+
+previous <- rep(0, 5)
+current <- c(5, -5, 5, -5, 1)
+while (any(current != previous)) {
+    previous <- current
+    lik <- optim(par = current[1:4], fn = fnzigplog, y = y, x = x, alpha = current[5], control = list(fnscale = -1))
+    lik2 <- optim(par = current[5], fn = fnzigpfixed, y = y, x = x, fixedpar = lik$par, control = list(fnscale = -1), method = "Brent", lower = 0, upper = 1000)
+    current <- c(lik$par, lik2$par)
+    
+    print(current)
+}
+
+par <- current
+@
+
+<<zigpplot, echo=FALSE>>=
+prices <- seq(min(bean.data$price) - .1, max(bean.data$price) + .1, by = 0.01)
+
+bean.ddply <- ddply(bean.data, .(price), summarise, mvm = mean(mvm))
+
+zigp.data <- data.frame(Price = prices, PredictedSales = (exp(par[1] + par[2]*prices) / (1 + exp(par[1] + par[2]*prices))) * (exp(par[3] + par[4] * prices)))
+
+qplot(Price, PredictedSales, data = zigp.data, geom = "blank") +
+    geom_line(colour = "blue", size = 2) +
+    geom_bar(data = bean.ddply, stat = "identity", aes(x = price, y = mvm))
+@
+
+\subsection{Comparison with pscl}
+The R package pscl includes a function to fit a zero-inflated negative-binomial model, statistically equivalent to a zero-inflated Gamma-Poisson mixture model. In this section, we will fit such a model and compare to the results derived by hand.
+
+<<pscl_compare, results='asis'>>=
+pscl.model <- zeroinfl(mvm ~ price, data = bean.data, dist = "negbin")
+
+pscl.par <- c(pscl.model$coefficients$zero[1], pscl.model$coefficients$zero[2], pscl.model$coefficients$count[1], pscl.model$coefficients$count[2], pscl.model$theta)
+pscl.par <- as.numeric(pscl.par)
+
+my.df <- data.frame(OurModel = par, PSCL = pscl.par)
+print(xtable(my.df, digits = 6), table.position = 'H')
+@
+
+<<all_compare, echo=FALSE>>=
+prices <- seq(min(bean.data$price) - .1, max(bean.data$price) + .1, by = 0.01)
+
+bean.ddply <- ddply(bean.data, .(price), summarise, mvm = mean(mvm))
+
+lik.sip <- optim(par = c(5, -0.5), fn = fnsiplog, y = y, x = x, control = list(fnscale = -1))
+lik.zip <- optim(par = c(5, -5, 5, -0.5), fn = fnzip, y = y, x = x, control = list(fnscale = -1))
+
+compare.data <- data.frame(Price = prices, PredictedSalesSIP = exp(lik.sip$par[1] + lik.sip$par[2]*prices), PredictedSalesZIP =  (exp(lik.zip$par[1] + lik.zip$par[2]*prices) / (1 + exp(lik.zip$par[1] + lik.zip$par[2]*prices))) * (exp(lik.zip$par[3] + lik.zip$par[4] * prices)), PredictedSalesZIGP = (exp(par[1] + par[2]*prices) / (1 + exp(par[1] + par[2]*prices))) * (exp(par[3] + par[4] * prices)))
+
+compare.melt <- melt(compare.data, id.vars = 1)
+
+qplot(Price, value, data = compare.melt, geom = "blank") +
+    geom_line(size = 2, aes(colour = variable, x = Price, y = value)) +
+    geom_bar(data = bean.ddply, stat = "identity", aes(x = price, y = mvm))
+
+qplot(Price, value, data = subset(compare.melt, Price >= .3), geom = "blank") +
+    geom_line(size = 2, aes(colour = variable, x = Price, y = value)) +
+    geom_bar(data = subset(bean.ddply, price >= .3), stat = "identity", aes(x = price, y = mvm))
+
+qplot(Price, value, data = subset(compare.melt, Price >= .5), geom = "blank") +
+    geom_line(size = 2, aes(colour = variable, x = Price, y = value)) +
+    geom_bar(data = subset(bean.ddply, price >= .5), stat = "identity", aes(x = price, y = mvm))
+@
+
+\end{document}
