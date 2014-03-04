@@ -340,7 +340,7 @@ zigp.hessian <- function(par, y, x, alpha) {
              0, 0, d2ldd02, d2ldd0d1, 0, 0, d2ldd0d1, d2ldd12), nrow = 4, byrow = TRUE))
 }
 
-newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = c(5, -5, 5, -5), y = y, x = x, alpha = alpha, debug = TRUE)
+#newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = c(5, -5, 5, -5), y = y, x = x, alpha = alpha, debug = TRUE)
 @
 
  \subsubsection{First Derivatives}
