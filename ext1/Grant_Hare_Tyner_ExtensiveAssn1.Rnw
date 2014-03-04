@@ -53,6 +53,98 @@ qplot(mvm, data = bean.indiv, geom = "histogram") + facet_wrap(~price)
 \subsection{Model Formulation}
 
 \subsection{Maximum Likelihood Estimation}
+<<sip_newtraph>>=
+
+newton.raphson <- function(loglik, gradient, hessian, start, lower = rep(-Inf, length(start)), upper = rep(Inf, length(start)), tol = rep(1e-2, 3), max.iterations = 100, step.halving = TRUE, debug = FALSE, ...) {
+    current <- start
+    conditions <- TRUE
+    
+    iterations <- 0
+    while (TRUE) {        
+        new <- as.vector(current - solve(hessian(current, ...)) %*% gradient(current, ...))
+        new[new < lower] <- lower[new < lower] + tol[1]
+        new[new > upper] <- upper[new > upper] - tol[1]
+        
+        if(!(any(abs(gradient(new, ...)) > tol[1]) | loglik(new, ...) - loglik(current, ...) > tol[2] | dist(rbind(current, new))[1] > tol[3])) break;
+        
+        if (debug) cat(paste("Current loglik is", loglik(current, ...), "\n"))
+        if (debug) cat(paste("New is now", new, "\n"))
+        if (debug) cat(paste("New loglik is", loglik(new, ...), "\n"))
+        
+        if (step.halving & (loglik(new, ...) < loglik(current, ...))) {
+            if (debug) cat("Uh oh, time to fix this\n")
+            m <- 1
+            while (m < max.iterations & loglik(new, ...) < loglik(current, ...)) {
+                new <- as.vector(current - (1 / (2 * m)) * solve(hessian(current, ...)) %*% gradient(current, ...))
+                m <- 2*m;
+            }
+            if (debug) cat(paste("We have fixed it! its now", new, "\n"))
+            if (debug) cat(paste("And the new loglik is finally", loglik(new, ...), "\n"))
+        }
+        
+        iterations <- iterations + 1
+        if (iterations > max.iterations) {
+            if (debug) cat(paste("Didn't converge in", max.iterations, "iterations\n"))
+            break;
+        }
+                
+        if (debug) cat("\n")
+        
+        current <- new
+    }
+    
+    return(new)
+}
+
+sip.loglik <- function(par, y, x) {
+    d0 <- par[1]
+    d1 <- par[2]
+    
+    T1 <- exp(d0 + d1*x)
+    
+    return(sum(y * log(T1) - T1 - lfactorial(y)))
+}
+
+sip.gradient <- function(par, y, x) {
+    d0 <- par[1]
+    d1 <- par[2]
+    
+    T1 <- exp(d0 + d1*x)
+    mu <- T1
+    
+    dldmu <- y/mu - 1
+    dmudd0 <- T1
+    dmudd1 <- x*T1
+    
+    dldd0 <- sum(dldmu * dmudd0)
+    dldd1 <- sum(dldmu * dmudd1)
+    
+    return(c(dldd0, dldd1))
+}
+
+sip.hessian <- function(par, y, x) {
+    d0 <- par[1]
+    d1 <- par[2]
+    
+    T1 <- exp(d0 + d1*x)
+    mu <- T1
+    
+    d2ldmu2 <- -y/mu^2
+    
+    d2mudd02 <- T1
+    d2mudd0dd1 <- x*T1
+    d2mudd12 <- (x^2)*T1
+    
+    d2ldd02 <- sum(d2ldmu2 * d2mudd02)
+    d2ldd0dd1 <- d2ldd1dd0 <- sum(d2ldmu2 * d2mudd0dd1)
+    d2ldd12 <- sum(d2ldmu2 * d2mudd12)
+    
+    return(matrix(c(d2ldd02, d2ldd0dd1, d2ldd0dd1, d2ldd12), nrow = 2))
+}
+
+#newton.raphson(sip.loglik, sip.gradient, sip.hessian, start = c(5, -5), y = y, x = x, debug = FALSE)
+@
+
 <<sip>>=
 par <- c(5, -0.5)
 
