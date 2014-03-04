@@ -185,13 +185,13 @@ print(xtable(my.df, digits = 6), table.position = 'H')
 
 \subsection{Model Formulation}
 $Y_i|\lambda_i \sim \text{independent Poisson}(\lambda_i)$ \\
-$\lambda_i|\alpha,\beta \sim \text{iid Gamma}(\alpha, \beta)$ \\
+$\lambda_i|\alpha,b_i \sim \text{independent Gamma}(\alpha, b_i)$ \\
 
 \begin{align*}
-h(y_i | \alpha, \beta) &= \int f(y_i | \lambda_i, p)g(\lambda_i | \alpha,\beta)d\lambda_i \\
-                       &= \frac{\beta^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i}e^{-\lambda_i}\lambda_i^{\alpha - 1}e^{-\beta\lambda_i}d\lambda_i \\
-                       &= \frac{\beta^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i + \alpha - 1}e^{-\lambda_i(\beta + 1)}d\lambda_i \\
-                       &= \frac{\beta^{\alpha}\Gamma{(\alpha + y_i)}}{y_i!\Gamma{(\alpha)}(\beta + 1)^{\alpha + y_i}}
+h(y_i | \alpha, b_i) &= \int f(y_i | \lambda_i, p)g(\lambda_i | \alpha,b_i)d\lambda_i \\
+                       &= \frac{b_i^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i}e^{-\lambda_i}\lambda_i^{\alpha - 1}e^{-b_i\lambda_i}d\lambda_i \\
+                       &= \frac{b_i^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i + \alpha - 1}e^{-\lambda_i(b_i + 1)}d\lambda_i \\
+                       &= \frac{b_i^{\alpha}\Gamma{(\alpha + y_i)}}{y_i!\Gamma{(\alpha)}(b_i + 1)^{\alpha + y_i}}
 \end{align*}
 
 <<test>>=
@@ -211,29 +211,69 @@ qplot(x, fn, data = my.df, geom = "bar", stat = "identity")
 \begin{align*}
 Pr(Y_i = 0 | \lambda_i, p) &= Pr(Y_i = 0 | Z_i = 0)Pr(Z_i = 0) + Pr(Y_i = 0 | Z_i = 1)Pr(Z_i = 1) \\
             &= Pr(Z_i = 0) + Pr(Y_i = 0 | Z_i = 1)Pr(Z_i = 1) \\
-            &= (1 - \pi) + \pi(\frac{\beta}{\beta + 1})^\alpha \\
+            &= (1 - \pi_i) + \pi_i(\frac{b_i}{b_i + 1})^\alpha \\
 \end{align*}
 
 \begin{align*}
 Pr(Y_i = y | \lambda_i, p) &= Pr(Y_i = y | Z_i = 0)Pr(Z_i = 0) + Pr(Y_i = y | Z_i = 1)Pr(Z_i = 1) \\
             &= Pr(Y_i = y | Z_i = 1)Pr(Z_i = 1) \\
-            &= \pi\frac{\beta^{\alpha}\Gamma{(\alpha + y_i)}}{y_i!\Gamma{(\alpha)}(\beta + 1)^{\alpha + y_i}} \\
-            &= \pi{\alpha + y_i - 1 \choose y_i}\frac{\beta^{\alpha}}{(\beta + 1)^{\alpha + y_i}} \\
-            &= \pi{\alpha + y_i - 1 \choose y_i}(\frac{\beta}{\beta + 1})^{\alpha}(\frac{1}{\beta + 1})^{y_i}
+            &= \pi_i\frac{b_i^{\alpha}\Gamma{(\alpha + y_i)}}{y_i!\Gamma{(\alpha)}(b_i + 1)^{\alpha + y_i}} \\
+            &= \pi_i{\alpha + y_i - 1 \choose y_i}\frac{b_i^{\alpha}}{(b_i + 1)^{\alpha + y_i}} \\
+            &= \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{b_i}{b_i + 1})^{\alpha}(\frac{1}{b_i + 1})^{y_i}
 \end{align*}
 
 Hence, the full zero-inflated gamma-poisson distribution pmf is: \\
 
-$(1 - \pi) + \pi(\frac{\beta_i}{\beta_i + 1})^\alpha I(y_i = 0) + \pi{\alpha + y_i - 1 \choose y_i}(\frac{\beta_i}{\beta_i + 1})^{\alpha}(\frac{1}{\beta_i + 1})^{y_i}I(y_i > 0)$ \\
+$(1 - \pi_i) + \pi_i(\frac{b_i}{b_i + 1})^\alpha I(y_i = 0) + \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{b_i}{b_i + 1})^{\alpha}(\frac{1}{b_i + 1})^{y_i}I(y_i > 0)$ \\
 
 $log(E(Y|x)) = \delta_0 + \delta_1x_i$ \\
-$\mu_i = E(Y|x) = e^{\delta_0 + \delta_1x_i} = \frac{\alpha}{\beta_i}$ \\
-$\pi = \frac{e^{\beta_0 + \beta_1x_i}}{1 + e^{\beta_0 + \beta_1x_i}}$
+$\mu_i = E(Y|x) = e^{\delta_0 + \delta_1x_i} = \frac{\alpha}{b_i}$ \\
+$\pi_i = \frac{e^{\beta_0 + \beta_1x_i}}{1 + e^{\beta_0 + \beta_1x_i}}$
 
 \begin{align*}
-L(\alpha, \beta_i) &= (1 - \pi) + \pi(\frac{\beta_i}{\beta_i + 1})^\alpha I(y_i = 0) + \pi{\alpha + y_i - 1 \choose y_i}(\frac{\beta_i}{\beta_i + 1})^{\alpha}(\frac{1}{\beta_i + 1})^{y_i}I(y_i > 0) \\
-                   &= (1 - \pi) + \pi(\frac{\alpha}{\alpha + \mu_i})^\alpha I(y_i = 0) + \pi{\alpha + y_i - 1 \choose y_i}(\frac{\alpha}{\alpha + \mu_i})^{\alpha}(\frac{\mu_i}{\alpha + \mu_i})^{y_i}I(y_i > 0)
+L_i(\pi_i,\alpha, b_i) &= (1 - \pi_i) + \pi_i(\frac{b_i}{b_i + 1})^\alpha I(y_i = 0) + \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{b_i}{b_i + 1})^{\alpha}(\frac{1}{b_i + 1})^{y_i}I(y_i > 0) \\
+L_i(\pi_i,\mu_i,\alpha)  &= (1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha I(y_i = 0) + \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{\alpha}{\alpha + \mu_i})^{\alpha}(\frac{\mu_i}{\alpha + \mu_i})^{y_i}I(y_i > 0)\\
+\ell_i(\pi_i,\mu_i,\alpha) & = (1-k_i)\log\left((1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha\right)+k_i\log\left(\pi_i{\alpha + y_i - 1 \choose y_i}(\frac{\alpha}{\alpha + \mu_i})^{\alpha}(\frac{\mu_i}{\alpha + \mu_i})^{y_i}\right)\\
+\ell(\pi,\mu,\alpha) &= \sum_{i=1}^n (1-k_i)\log\left((1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha\right)+k_i\log\left(\pi_i{\alpha + y_i - 1 \choose y_i}(\frac{\alpha}{\alpha + \mu_i})^{\alpha}(\frac{\mu_i}{\alpha + \mu_i})^{y_i}\right) 
 \end{align*}
+where $k_i = 0$ if $y_i = 0$ and $k_i = 1$ if $y_i > 0$.  
+
+
+ \subsubsection{First Derivatives}
+  \begin{align*}
+  \frac{\partial \ell_i}{\partial \beta_i} & =  \frac{\partial \ell_i}{\partial \pi_i} \frac{\partial \pi_i}{\partial \beta_i}   \quad \text{for $i=0,1$}\\
+   \frac{\partial \ell_i}{\partial \delta_i} & =  \frac{\partial \ell_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \delta_i}  \quad \text{for $i = 0,1$}
+  \end{align*}
+  \begin{align*}
+   \frac{\partial \ell_i}{\partial \pi_i}   & = (1-k_i) \cdot \frac{\left((\frac{\alpha}{\alpha+\mu_i})^\alpha - 1\right)}{(1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha} + k_i \cdot \frac{1}{ \pi_i} \\
+ \frac{\partial \pi_i}{\partial \beta_0} & = \frac{e^{\beta_0+\beta_1x_i}}{(1+e^{\beta_0+\beta_1x_i})^2} \\
+  \frac{\partial \pi_i}{\partial \beta_1} & = \frac{x_ie^{\beta_0+\beta_1x_i}}{(1+e^{\beta_0+\beta_1x_i})^2} \\
+  \frac{\partial \ell_i}{\partial \mu_i} & = (1-k_i)\cdot \frac{-\pi_i(\frac{\alpha}{\alpha+\mu_i})^{\alpha+1}}{(1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha} + k_i \cdot -\frac{\alpha(\mu_i-y_i)}{\mu_i(\alpha+\mu_i)} \\
+   \frac{\partial \mu_i}{\partial \delta_0} & = e^{\delta_0+\delta_1 x_i} \\
+   \frac{\partial \mu_i}{\partial \delta_1} & = x_ie^{\delta_0+\delta_1 x_i}
+  \end{align*}
+  
+  \subsubsection{Second Derivatives}
+  \begin{align*}
+    \frac{\partial^2 \ell_i}{\partial \beta_i^2} & = \frac{\partial^2 \ell_i}{\partial \pi_i^2} \frac{\partial^2 \pi_i}{\partial \beta_i^2}  \quad \text{for $i=0,1$} \\
+	  \frac{\partial^2 \ell_i}{\partial \beta_0\beta_1} & = \frac{\partial^2 \ell_i}{\partial \pi_i^2} \frac{\partial^2 \pi_i}{\partial \beta_0 \partial \beta_1} =  \frac{\partial^2 \ell_i}{\partial \beta_1\beta_0} \\
+	  \frac{\partial^2 \ell_i}{\partial \delta_i^2} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial^2 \mu_i}{\partial \delta_i^2}  \quad \text{for $i=0,1$}  \\ 
+	    \frac{\partial^2 \ell_i}{\partial \delta_0\delta_1} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial^2 \mu_i}{\partial \delta_0 \partial \delta_1} =  \frac{\partial^2 \ell_i}{\partial \delta_1\delta_0}
+  \end{align*}
+  \begin{align*}
+  \frac{\partial^2 \ell_i}{\partial \pi_i^2}  & = (1-k_i) \cdot \frac{-\left((\frac{\alpha}{\alpha+\mu_i})^\alpha - 1\right)^2}{[(1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha]^2} + k_i \cdot \frac{-1}{ \pi_i^2} \\
+  \frac{\partial^2 \pi_i}{\partial \beta_0^2} & = \frac{(1+e^{\beta_0+\beta_1x_i})^2e^{\beta_0+\beta_1x_i} - 2(e^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
+  	& = \frac{e^{\beta_0+\beta_1x_i} (1-e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^3} \\
+   \frac{\partial^2 \pi_i}{\partial \beta_1^2} & = \frac{(1+e^{\beta_0+\beta_1x_i})^2x_i^2e^{\beta_0+\beta_1x_i} - 2(x_ie^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
+   		& = \frac{x_i^2e^{\beta_0+\beta_1x_i}(1-e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^3} \\
+  \frac{\partial^2 \pi_i}{\partial \beta_0 \partial \beta_1} & = \frac{(1+ e^{\beta_0+\beta_1x_i})^2x_i e^{\beta_0+\beta_1x_i} - 2x_i(e^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
+  	& = \frac{x_ie^{\beta_0+\beta_1x_i}(1-e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^3} \\
+  \frac{\partial^2 \ell_i}{\partial \mu_i^2} & = (1-k_i)\cdot \frac{((1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha)(\pi_i (\alpha^2+\alpha)(\frac{\alpha}{\alpha+\mu_i})^{\alpha}(\alpha+\mu_i)^{-2}) - (-\pi_i(\frac{\alpha}{\alpha+\mu_i})^\alpha)^2}{((1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha)^2} \\ 
+  &+ k_i\cdot \frac{-\alpha\mu_i(\alpha+\mu_i) + (\alpha^2+\alpha)(\mu_i-y_i)}{\mu_i^2(\alpha+\mu_i)^2}	\\
+  \frac{\partial^2 \mu_i}{\partial \delta_0^2} & = e^{\delta_0+\delta_1 x_i} \\
+  \frac{\partial^2 \mu_i}{\partial \delta_1^2} & = x_i^2e^{\delta_0+\delta_1 x_i} \\
+  \frac{\partial^2 \mu_i}{\partial \delta_0 \partial \delta_1} & =x_i e^{\delta_0+\delta_1 x_i}
+   \end{align*} 
 
 \subsection{Parameter Estimation}
 
