@@ -238,6 +238,110 @@ L_i(\pi_i,\mu_i,\alpha)  &= (1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\
 \end{align*}
 where $k_i = 0$ if $y_i = 0$ and $k_i = 1$ if $y_i > 0$.  
 
+<<newt-raph>>=
+newton.raphson <- function(loglik, gradient, hessian, start, lower = rep(-Inf, length(start)), upper = rep(Inf, length(start)), tol = rep(1e-5, 3), max.iterations = 1000, debug = FALSE, ...) {
+    current <- runif(length(start))
+    new <- start
+    conditions <- TRUE
+    
+    iterations <- 0
+    while (conditions) {
+        new <- as.vector(current - solve(hessian(current, ...)) %*% gradient(current, ...))
+        new[new < lower] <- lower[new < lower] + tol[1]
+        new[new > upper] <- upper[new > upper] - tol[1]
+        
+        conditions <- any(abs(gradient(new, ...)) > tol[1]) | loglik(new, ...) - loglik(current, ...) > tol[2] | dist(rbind(current, new))[1] > tol[3]
+        
+        if (debug) cat(paste("New is now", new, "\n"))
+        
+        iterations = iterations + 1
+        if (iterations > max.iterations) stop(paste("Algorithm did not converge in", max.iterations, "iterations."))
+        
+        current <- new
+    }
+    
+    return(new)
+}
+
+alpha <- 1
+par <- c(5, -5, 5, -5)
+y <- bean.data$mvm
+x <- bean.data$price
+
+zigp.loglik <- function(par, y, x, alpha) {
+    b0 <- par[1]; b1 <- par[2]; d0 <- par[3]; d1 <- par[4];
+    
+    T0 <- exp(b0 + b1*x)
+    T1 <- exp(d0 + d1*x)
+    mu <- T1
+    pi <- T0 / (1 + T0)
+    T2 <- (alpha / (alpha + mu))^alpha
+    
+    return(sum((1 - (y > 0)) * log((1 - pi) + pi*T2) + ((y > 0) * log(pi * choose(alpha + y - 1, y) * T2 * (mu / (alpha + mu))^y))))
+}
+
+zigp.gradient <- function(par, y, x, alpha) {
+    b0 <- par[1]; b1 <- par[2]; d0 <- par[3]; d1 <- par[4];
+    
+    T0 <- exp(b0 + b1*x)
+    T1 <- exp(d0 + d1*x)
+    mu <- T1
+    pi <- T0 / (1 + T0)
+    T2 <- (alpha / (alpha + mu))^alpha
+
+    dldpi <- (1 - (y > 0)) * (T2 - 1)/((1 - pi) + pi*T2) + ((y > 0) * (1 / pi))
+    
+    dpidb0 <- T0 / (1 + T0)^2
+    dpidb1 <- x*T0 / (1 + T0)^2
+
+    dldmu <- (1 - (y > 0)) * (-pi * (alpha / (alpha + mu))^(alpha + 1)) / ((1 - pi) + pi*T2) + ((y > 0) * (-alpha * (mu - y)) / (mu * (alpha + mu)))
+    
+    dmudd0 <- T1
+    dmudd1 <- x*T1
+    
+    dldb0 <- sum(dldpi * dpidb0)
+    dldb1 <- sum(dldpi * dpidb1)
+    dldd0 <- sum(dldmu * dmudd0)
+    dldd1 <- sum(dldmu * dmudd1)
+    
+    return(c(dldb0, dldb1, dldd0, dldd1))
+}
+
+zigp.hessian <- function(par, y, x, alpha) {
+    b0 <- par[1]; b1 <- par[2]; d0 <- par[3]; d1 <- par[4];
+    
+    T0 <- exp(b0 + b1*x)
+    T1 <- exp(d0 + d1*x)
+    
+    mu <- T1
+    pi <- T0 / (1 + T0)
+    
+    T2 <- (alpha / (alpha + mu))^alpha
+    
+    d2ldpi2 <- (1 - (y > 0)) * -((T2 - 1) * T2) / ((1 - pi) + pi*T2)^2 + ((y > 0) * -1/pi^2)
+    d2pidb02 <- (T0 * (1 - T0)) / (1 + T0)^3
+    d2pidb12 <- (x^2 * T0 * (1 - T0)) / (1 + T0)^3
+    d2pidb0db1 <- (x * T0 * (1 - T0)) / (1 + T0)^3
+    
+    d2ldmu2 <- (1 - (y > 0)) * (((1 - pi) + pi*T2) * (pi * (alpha^2 + alpha) * T2 * (alpha + mu)^-2) - (-pi * T2)^2)/((1 - pi) + pi*T2)^2 + ((y > 0) * ((-alpha * mu * (alpha + mu) + (alpha^2 + alpha)*(mu - y))/(mu^2 * (alpha + mu)^2)))
+    
+    d2mudd02 <- T1
+    d2mudd12 <- x^2 * T1
+    d2mudd0dd1 <- x * T1
+    
+    d2ldb02 <- sum(d2ldpi2 * d2pidb02)
+    d2ldb12 <- sum(d2ldpi2 * d2pidb12)
+    d2ldb0b1 <- d2ldb1db0 <- sum(d2ldpi2 * d2pidb0db1)
+    d2ldd02 <- sum(d2ldmu2 * d2mudd02)
+    d2ldd12 <- sum(d2ldmu2 * d2mudd12)
+    d2ldd0d1 <- d2ldd1dd0 <- sum(d2ldmu2 * d2mudd0dd1)
+    
+    return(matrix(c(d2ldb02, d2ldb0b1, 0, 0, d2ldb0b1, d2ldb12, 0, 0,
+             0, 0, d2ldd02, d2ldd0d1, 0, 0, d2ldd0d1, d2ldd12), nrow = 4, byrow = TRUE))
+}
+
+newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = c(5, -5, 5, -5), y = y, x = x, alpha = alpha, debug = TRUE)
+@
 
  \subsubsection{First Derivatives}
   \begin{align*}
@@ -261,7 +365,7 @@ where $k_i = 0$ if $y_i = 0$ and $k_i = 1$ if $y_i > 0$.
 	    \frac{\partial^2 \ell_i}{\partial \delta_0\delta_1} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial^2 \mu_i}{\partial \delta_0 \partial \delta_1} =  \frac{\partial^2 \ell_i}{\partial \delta_1\delta_0}
   \end{align*}
   \begin{align*}
-  \frac{\partial^2 \ell_i}{\partial \pi_i^2}  & = (1-k_i) \cdot \frac{-\left((\frac{\alpha}{\alpha+\mu_i})^\alpha - 1\right)^2}{[(1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha]^2} + k_i \cdot \frac{-1}{ \pi_i^2} \\
+ \frac{\partial^2 \ell_i}{\partial \pi_i^2}  & = (1-k_i) \cdot \frac{-\left((\frac{\alpha}{\alpha+\mu_i})^\alpha - 1\right)(\frac{\alpha}{\alpha+\mu_i})^\alpha}{[(1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\alpha]^2} + k_i \cdot \frac{-1}{ \pi_i^2} \\
   \frac{\partial^2 \pi_i}{\partial \beta_0^2} & = \frac{(1+e^{\beta_0+\beta_1x_i})^2e^{\beta_0+\beta_1x_i} - 2(e^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
   	& = \frac{e^{\beta_0+\beta_1x_i} (1-e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^3} \\
    \frac{\partial^2 \pi_i}{\partial \beta_1^2} & = \frac{(1+e^{\beta_0+\beta_1x_i})^2x_i^2e^{\beta_0+\beta_1x_i} - 2(x_ie^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
