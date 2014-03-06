@@ -496,7 +496,7 @@ L_i(\pi_i,\mu_i,\alpha)  &= (1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\
 \end{align*}
 where $k_i = 0$ if $y_i = 0$ and $k_i = 1$ if $y_i > 0$.  
 
-<<zigp.newtraph>>=
+<<zigp.newtraph, cache=TRUE>>=
 zigp.loglik <- function(par, y, x, alpha) {
     b0 <- par[1]; b1 <- par[2]; d0 <- par[3]; d1 <- par[4];
     
@@ -547,6 +547,21 @@ zigp.hessian <- function(par, y, x, alpha) {
     
     T2 <- (alpha / (alpha + mu))^alpha
     
+    dldpi <- (1 - (y > 0)) * (T2 - 1)/((1 - pi) + pi*T2) + ((y > 0) * (1 / pi))
+    
+    dpidb0 <- T0 / (1 + T0)^2
+    dpidb1 <- x*T0 / (1 + T0)^2
+
+    dldmu <- (1 - (y > 0)) * (-pi * (alpha / (alpha + mu))^(alpha + 1)) / ((1 - pi) + pi*T2) + ((y > 0) * (-alpha * (mu - y)) / (mu * (alpha + mu)))
+    
+    dmudd0 <- T1
+    dmudd1 <- x*T1
+    
+    dldb0 <- sum(dldpi * dpidb0)
+    dldb1 <- sum(dldpi * dpidb1)
+    dldd0 <- sum(dldmu * dmudd0)
+    dldd1 <- sum(dldmu * dmudd1)
+    
     d2ldpi2 <- (1 - (y > 0)) * -((T2 - 1) * T2) / ((1 - pi) + pi*T2)^2 + ((y > 0) * -1/pi^2)
     d2pidb02 <- (T0 * (1 - T0)) / (1 + T0)^3
     d2pidb12 <- (x^2 * T0 * (1 - T0)) / (1 + T0)^3
@@ -554,22 +569,32 @@ zigp.hessian <- function(par, y, x, alpha) {
     
     d2ldmu2 <- (1 - (y > 0)) * (((1 - pi) + pi*T2) * (pi * (alpha^2 + alpha) * T2 * (alpha + mu)^-2) - (-pi * T2)^2)/((1 - pi) + pi*T2)^2 + ((y > 0) * ((-alpha * mu * (alpha + mu) + (alpha^2 + alpha)*(mu - y))/(mu^2 * (alpha + mu)^2)))
     
+    d2ldpidmu <- ((y > 0) - 1) * ((alpha / (alpha + mu))^(alpha + 1)) / (pi * (T2 - 1) + 1)^2
+    
     d2mudd02 <- T1
     d2mudd12 <- x^2 * T1
     d2mudd0dd1 <- x * T1
     
-    d2ldb02 <- sum(d2ldpi2 * d2pidb02)
-    d2ldb12 <- sum(d2ldpi2 * d2pidb12)
-    d2ldb0b1 <- d2ldb1db0 <- sum(d2ldpi2 * d2pidb0db1)
-    d2ldd02 <- sum(d2ldmu2 * d2mudd02)
-    d2ldd12 <- sum(d2ldmu2 * d2mudd12)
-    d2ldd0d1 <- d2ldd1dd0 <- sum(d2ldmu2 * d2mudd0dd1)
+    d2ldb02 <- sum(d2ldpi2 * dpidb0 * dpidb0 + d2pidb02 * dldpi)
+    d2ldb0db1 <- d2ldb1db0 <- sum(d2ldpi2 * dpidb0 * dpidb1 + d2pidb0db1 * dldpi) 
+    d2ldb0dd0 <- d2ldd0db0 <- sum(d2ldpidmu * dpidb0 * dmudd0)
+    d2ldb0dd1 <- d2ldd1db0 <- sum(d2ldpidmu * dpidb0 * dmudd1)
+    d2ldb12 <- sum(d2ldpi2 * dpidb1 * dpidb1 + d2pidb12 * dldpi)
+    d2ldb1dd0 <- d2ldd0db1 <- sum(d2ldpidmu * dpidb1 * dmudd0)
+    d2ldb1dd1 <- d2ldd1db1 <- sum(d2ldpidmu * dpidb1 * dmudd1)
+    d2ldd02 <- sum(d2ldmu2 * dmudd0 * dmudd0 + d2mudd02 * dldmu)
+    d2ldd0dd1 <- d2ldd1dd0 <- sum(d2ldmu2 * dmudd0 * dmudd1 + d2mudd0dd1 * dldmu)
+    d2ldd12 <- sum(d2ldmu2 * dmudd1 * dmudd1 + d2mudd12 * dldmu)
     
-    return(matrix(c(d2ldb02, d2ldb0b1, 0, 0, d2ldb0b1, d2ldb12, 0, 0,
-             0, 0, d2ldd02, d2ldd0d1, 0, 0, d2ldd0d1, d2ldd12), nrow = 4, byrow = TRUE))
+    return(matrix(c(d2ldb02, d2ldb0db1, d2ldb0dd0, d2ldb0dd1, d2ldb1db0, d2ldb12, d2ldb1dd0, d2ldb1dd1, d2ldd0db0, d2ldd0db1, d2ldd02, d2ldd0dd1, d2ldd1db0, d2ldd1db1, d2ldd1dd0, d2ldd12), nrow = 4, byrow = TRUE))
 }
 
-#newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = c(5, -5, 5, -5), y = y, x = x, alpha = alpha, debug = TRUE)
+par.sip.newtraph.full <- newton.raphson(sip.loglik, sip.gradient, sip.hessian, start = c(1, 1), y = bean.data$mvm, x = bean.data$price)
+
+par.zip.newtraph.full <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(1, 1, 1, 1), y = bean.data$mvm, x = bean.data$price)
+
+alpha <- 1.026
+par.zigp.newtraph <- newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = par.zip.newtraph.full, y = bean.data$mvm, x = bean.data$price, alpha = alpha, max.iterations=0)
 @
 
  \subsubsection{First Derivatives}
@@ -612,6 +637,19 @@ zigp.hessian <- function(par, y, x, alpha) {
 
 \subsection{Comparison with pscl}
 The R package pscl includes a function to fit a zero-inflated negative-binomial model, statistically equivalent to a zero-inflated Gamma-Poisson mixture model. In this section, we will fit such a model and compare to the results derived by hand.
+
+<<zigp.pscl, results='asis'>>=
+pscl.zigp <- zeroinfl(mvm ~ price, data = bean.data, dist = "negbin")
+
+pscl.par.zigp <- c(pscl.zigp$coefficients$zero[1], pscl.zigp$coefficients$zero[2], pscl.zigp$coefficients$count[1], pscl.zigp$coefficients$count[2])
+pscl.par.zigp <- as.numeric(pscl.par.zigp)
+names(pscl.par.zigp) <- c("b0_pscl", "b1_pscl", "d0_pscl", "d1_pscl")
+
+names(par.zigp.newtraph) <- c("b0", "b1", "d0", "d1")
+my.df <- data.frame(t(c(par.zigp.newtraph, pscl.par.zigp)))
+
+print(xtable(my.df, digits = c(0, rep(6, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.position = 'H')
+@
 
 \clearpage
 
