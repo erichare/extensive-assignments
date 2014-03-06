@@ -7,7 +7,7 @@
 
 \begin{document}
 <<concordance, echo=FALSE>>=
-opts_chunk$set(concordance=TRUE, echo=FALSE)
+opts_chunk$set(concordance=TRUE, echo=FALSE, tidy=TRUE)
 opts_knit$set(self.contained=FALSE)
 @
 
@@ -612,5 +612,11 @@ zigp.hessian <- function(par, y, x, alpha) {
 
 \subsection{Comparison with pscl}
 The R package pscl includes a function to fit a zero-inflated negative-binomial model, statistically equivalent to a zero-inflated Gamma-Poisson mixture model. In this section, we will fit such a model and compare to the results derived by hand.
+
+\clearpage
+
+\section{Code Appendix}
+<<Rcode, eval=FALSE, ref.label=all_labels()[-1],echo=TRUE, cache=FALSE>>=
+@
 
 \end{document}
