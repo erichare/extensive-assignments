@@ -595,7 +595,7 @@ par.sip.newtraph.full <- newton.raphson(sip.loglik, sip.gradient, sip.hessian, s
 
 par.zip.newtraph.full <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(1, 1, 1, 1), y = bean.data$mvm, x = bean.data$price)
 
-alpha <- 1
+alpha <- 1.026
 par.zigp.newtraph <- newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = par.zip.newtraph.full, y = bean.data$mvm, x = bean.data$price, alpha = alpha)
 @
 
