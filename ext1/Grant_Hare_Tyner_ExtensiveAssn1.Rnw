@@ -17,6 +17,7 @@ library(plyr)
 library(ggplot2)
 library(reshape2)
 library(xtable)
+library(dplyr)
 @
 
 \setlength{\parskip}{3ex}
@@ -89,7 +90,7 @@ newton.raphson <- function(loglik, gradient, hessian, start, lower = rep(-Inf, l
         current <- new
     }
     
-    return(new)
+    return(list(loglik = loglik(new, ...), par = new))
 }
 @
 
@@ -174,7 +175,8 @@ sip.stores <- ldply(stores, function(sto) {
     x <- subset(bean.data, store == sto)$price
     y <- subset(bean.data, store == sto)$mvm
     
-    par.sip.newtraph <- newton.raphson(sip.loglik, sip.gradient, sip.hessian, start = c(5, -5), y = y, x = x)
+    sip.newtraph <- newton.raphson(sip.loglik, sip.gradient, sip.hessian, start = c(5, -5), y = y, x = x)
+    par.sip.newtraph <- sip.newtraph$par
     
     d0 <- par.sip.newtraph[1]
     d1 <- par.sip.newtraph[2]
@@ -399,7 +401,8 @@ zip.stores <- ldply(stores, function(sto) {
     x <- subset(bean.data, store == sto)$price
     y <- subset(bean.data, store == sto)$mvm
     
-    par.zip.newtraph <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(5, -5, 5, -5), y = y, x = x)
+    zip.newtraph <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(5, -5, 5, -5), y = y, x = x)
+    par.zip.newtraph <- zip.newtraph$par
     
     b0 <- par.zip.newtraph[1]
     b1 <- par.zip.newtraph[2]
@@ -497,6 +500,18 @@ L_i(\pi_i,\mu_i,\alpha)  &= (1 - \pi_i) + \pi_i(\frac{\alpha}{\alpha + \mu_i})^\
 where $k_i = 0$ if $y_i = 0$ and $k_i = 1$ if $y_i > 0$.  
 
 <<zigp.newtraph, cache=TRUE>>=
+zigp.fn <- function(par, y, x, alpha) {
+    b0 <- par[1]; b1 <- par[2]; d0 <- par[3]; d1 <- par[4];
+    
+    T0 <- exp(b0 + b1*x)
+    T1 <- exp(d0 + d1*x)
+    mu <- T1
+    pi <- T0 / (1 + T0)
+    T2 <- (alpha / (alpha + mu))^alpha
+    
+    return((y == 0)*((1 - pi) + pi*T2) + (y > 0)*choose(alpha + y - 1, y)*T2*(mu / (alpha + mu))^y)
+}
+
 zigp.loglik <- function(par, y, x, alpha) {
     b0 <- par[1]; b1 <- par[2]; d0 <- par[3]; d1 <- par[4];
     
@@ -591,22 +606,15 @@ zigp.hessian <- function(par, y, x, alpha) {
     return(matrix(c(d2ldb02, d2ldb0db1, d2ldb0dd0, d2ldb0dd1, d2ldb1db0, d2ldb12, d2ldb1dd0, d2ldb1dd1, d2ldd0db0, d2ldd0db1, d2ldd02, d2ldd0dd1, d2ldd1db0, d2ldd1db1, d2ldd1dd0, d2ldd12), nrow = 4, byrow = TRUE))
 }
 
-par.sip.newtraph.full <- newton.raphson(sip.loglik, sip.gradient, sip.hessian, start = c(1, 1), y = bean.data$mvm, x = bean.data$price)
+alphas <- seq(1, 1.05, by = 0.001)
+start <- c(5, -5, 5, -5)
+profile.alpha.results <- ldply(alphas, function(alpha) {
+    zigp.newtraph <- newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = start, y = bean.data$mvm, x = bean.data$price, alpha = alpha)
+        c(alpha = alpha, loglik = zigp.newtraph$loglik, b0 = zigp.newtraph$par[1], b1 = zigp.newtraph$par[2], d0 = zigp.newtraph$par[3], d1 = zigp.newtraph$par[4])
+})
 
-par.zip.newtraph.full <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(1, 1, 1, 1), y = bean.data$mvm, x = bean.data$price)
-
-alpha <- 1.026
-par.zigp.newtraph <- newton.raphson(zigp.loglik, zigp.gradient, zigp.hessian, start = par.zip.newtraph.full, y = bean.data$mvm, x = bean.data$price, alpha = alpha)
-@
-
-<<alpha_moment_estimator>>=
-x <- bean.data$price
-y <- bean.data$mvm
-mui <- exp(par.zigp.newtraph[1] + par.zigp.newtraph[2]*x) / (1 + exp(par.zigp.newtraph[1] + par.zigp.newtraph[2]*x)) * exp(par.zigp.newtraph[3] + par.zigp.newtraph[4]*x)
-vmui <- mui^2
-
-## Moment estimator
-alpha_hat <- (1 / length(y)) * sum((y - mui)^2 / vmui)
+zigp.newtraph <- profile.alpha.results[which.max(profile.alpha.results$loglik), ]
+par.zigp.newtraph <- as.numeric(zigp.newtraph[1,3:6])
 @
 
  \subsubsection{First Derivatives}
@@ -664,6 +672,26 @@ zigp.melt <- melt(zigp.merge, id.vars = c("Price"))
 
 qplot(Price, PredictedSales, data = zigp.merge, geom = "line", size = I(3), colour = I("blue")) +
     geom_bar(aes(x = Price, y = actual_mvm), stat = "identity", inherit.aes = FALSE)
+@
+
+\subsection{Model Assessment}
+<<compare, cache=TRUE>>=
+zip.newtraph.full <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(1, 1, 1, 1), y = bean.data$mvm, x = bean.data$price)
+sip.newtraph.full <- newton.raphson(sip.loglik, sip.gradient, sip.hessian, start = c(1, 1), y = bean.data$mvm, x = bean.data$price)
+
+comparison.results <- ldply(seq(0, 1, by = 0.01), function(pr) {
+    sip <- exp(sip.newtraph.full$par[1] + sip.newtraph.full$par[2]*pr)
+    zip <- exp(zip.newtraph.full$par[1] + zip.newtraph.full$par[2]*pr) / (1 + exp(zip.newtraph.full$par[1] + zip.newtraph.full$par[2]*pr)) * exp(zip.newtraph.full$par[3] + zip.newtraph.full$par[4]*pr)
+    zigp <- as.numeric(exp(par.zigp.newtraph[1] + par.zigp.newtraph[2]*pr) / (1 + exp(par.zigp.newtraph[1] + par.zigp.newtraph[2]*pr)) * exp(par.zigp.newtraph[3] + par.zigp.newtraph[4]*pr))
+    actual <- mean(subset(bean.data, price == pr)$mvm)
+    if (is.nan(actual)) actual <- 0
+    
+    c(price = pr, sip = sip, zip = zip, zigp = zigp, actual = actual)
+})
+comparison.melt <- melt(comparison.results, id.vars = "price")
+
+qplot(price, value, data = comparison.melt, group = variable, colour = variable, geom = "line", size = I(3))
+qplot(price, value, data = subset(comparison.melt, price > 0.3 & price < 0.7), group = variable, colour = variable, geom = "line", size = I(3))
 @
 
 \subsection{Comparison with pscl}
