@@ -124,6 +124,18 @@ The partial derivatives of $\delta_{0}$ and $\delta_{1}$ are
 
 \subsection{Maximum Likelihood Estimation}
 <<sip_newtraph>>=
+sip.fn <- function(par, y, x) {
+    d0 <- par[1]
+    d1 <- par[2]
+    
+    T1 <- exp(d0 + d1*x)
+    
+    val <- T1^y * exp(-T1) / factorial(y)
+    val[is.nan(val)] <- 0
+    
+    return(val)
+}
+
 sip.loglik <- function(par, y, x) {
     d0 <- par[1]
     d1 <- par[2]
@@ -308,6 +320,22 @@ The second partial derivatives are given by
 
 \subsection{Maximum Likelihood Estimation}
 <<zip.newtraph>>=
+zip.fn <- function(par, y, x) {
+    b0 <- par[1]
+    b1 <- par[2]
+    d0 <- par[3]
+    d1 <- par[4]
+    
+    pi <- exp(b0 + b1*x) / (1 + exp(b0 + b1*x))
+    lambda <- exp(d0 + d1*x)
+    
+    single <- ((y == 0) * ((1 - pi) + pi*exp(-lambda))) +
+              ((y > 0) * (pi * lambda^y * exp(-lambda)) / factorial(y))
+    
+    single[is.nan(single)] <- 0
+    return(single)
+}
+
 zip.loglik <- function(par, y, x) {
     b0 <- par[1]
     b1 <- par[2]
@@ -509,7 +537,7 @@ zigp.fn <- function(par, y, x, alpha) {
     pi <- T0 / (1 + T0)
     T2 <- (alpha / (alpha + mu))^alpha
     
-    return((y == 0)*((1 - pi) + pi*T2) + (y > 0)*choose(alpha + y - 1, y)*T2*(mu / (alpha + mu))^y)
+    return((y == 0)*((1 - pi) + pi*T2) + (y > 0)*pi*choose(alpha + y - 1, y)*T2*(mu / (alpha + mu))^y)
 }
 
 zigp.loglik <- function(par, y, x, alpha) {
@@ -695,6 +723,41 @@ comparison.melt <- melt(comparison.results, id.vars = "price")
 qplot(price, value, data = comparison.melt, group = variable, colour = variable, geom = "line", size = I(3))
 qplot(price, value, data = subset(comparison.melt, price > 0.3 & price < 0.7), group = variable, colour = variable, geom = "line", size = I(3))
 @
+
+Let's compare the three models discussed in terms of expected daily sales at fixed price levels, compared to what was actually observed in the data. First, we selected the four most common prices to do the comparison:
+
+<<compare2, results='asis'>>=
+actual.1 <- table(factor(subset(bean.data, price == 0.66)$mvm, levels = 0:32))
+expected.sip.1 <- sip.fn(sip.newtraph.full$par, 0:32, 0.66) * length(subset(bean.data, price == 0.66)$mvm)
+expected.zip.1 <- zip.fn(zip.newtraph.full$par, 0:32, 0.66) * length(subset(bean.data, price == 0.66)$mvm)
+expected.zigp.1 <- zigp.fn(c(zigp.newtraph$b0, zigp.newtraph$b1, zigp.newtraph$d0, zigp.newtraph$d1), 0:32, 0.66, zigp.newtraph$alpha) * length(subset(bean.data, price == 0.66)$mvm)
+
+print(xtable(data.frame(y = 0:32, sip.expect = expected.sip.1, zip.expect = expected.zip.1, zigp.expect = expected.zigp.1, actual = as.numeric(actual.1)), digits = c(0, 0, 4, 4, 4, 0)), include.rownames = FALSE)
+@
+
+<<compare3, results='asis', warning=FALSE>>=
+chi.table <- ldply(sort(unique(bean.data$price)), function(pr) {
+    y <- subset(bean.data, price == pr)$mvm
+    actual.1 <- table(factor(subset(bean.data, price == pr)$mvm, levels = min(y):min(max(y), 100)))
+    expected.sip.1 <- sip.fn(sip.newtraph.full$par, min(max(y), 100), pr) * length(subset(bean.data, price == pr)$mvm)
+    expected.zip.1 <- zip.fn(zip.newtraph.full$par, min(max(y), 100), pr) * length(subset(bean.data, price == pr)$mvm)
+    expected.zigp.1 <- zigp.fn(c(zigp.newtraph$b0, zigp.newtraph$b1, zigp.newtraph$d0, zigp.newtraph$d1), min(max(y), 100), pr, zigp.newtraph$alpha) * length(subset(bean.data, price == pr)$mvm)
+    
+    ch1 <- sum((actual.1 - expected.sip.1)^2 / expected.sip.1)
+    ch2 <- sum((actual.1 - expected.zip.1)^2 / expected.zip.1)
+    ch3 <- sum((actual.1 - expected.zigp.1)^2 / expected.zigp.1)
+    
+    if (is.na(ch1)) ch1 <- Inf
+    best <- "sip"
+    if (ch3 < ch2 & ch3 < ch1) best <- "zigp"
+    if (ch2 < ch3 & ch2 < ch1) best <- "zip"
+    
+    c(price = pr, sip.chi = ch1, zip.chi = ch2, zigp.chi = ch3, best = best)
+})
+
+xtable(chi.table, display = c("d", "f", "E", "E", "E", "s"), digits = c(0, 2, 4, 4, 4, 0))
+@
+
 
 \subsection{Comparison with pscl}
 The R package pscl includes a function to fit a zero-inflated negative-binomial model, statistically equivalent to a zero-inflated Gamma-Poisson mixture model. In this section, we will fit such a model and compare to the results derived by hand.
