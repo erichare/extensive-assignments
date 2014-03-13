@@ -38,15 +38,26 @@ bean.data <- read.table("greenbeandat.txt", header = TRUE)
 bean.data <- bean.data[,-c(2, 6, 7)]
 bean.data <- subset(bean.data, store < 7000)
 
-bean.indiv <- subset(bean.data, store == 1039)
+bean.indiv <- subset(bean.data, store == 1011)
 @
 
 \setcounter{page}{1}
 
 \section{Exploratory Analysis}
+The objective of this problem is to devise a model to describe all or a large part of the stores. We will first explore the data to see different behaviors. Then we shall develop a model for individual stores and a model the entire region as a whole. For both models we will assume that sales and price are each independent over time. In the process of exploration, we have determined that stores with ID 7000 and greater do not follow the same trends as the rest of the data. Therefore, we will exclude those stores from later analysis.
 
-<<price_plot, message=FALSE>>=
+Figure \ref{fig:price_plot} displays histograms of the sales for each value of price in Store 1011. A few things are immediately clear in the data. First, stores price green beans at specific prices much more frequently than others. In particular, Store 1011 seemed to mostly price the green beans at either 0.68 or 0.77. Secondly, the zero-inflated nature of the data is very clear, with a large peak at zero sales.
+
+<<price_plot, message=FALSE, fig.cap='Histograms of sales for Store 1011 for each price.'>>=
 qplot(mvm, data = bean.indiv, geom = "histogram") + facet_wrap(~price)
+@
+
+Figure \ref{fig:sales_plot} displays boxplots of the daily sales for each of the first nine stores in the data. A few things become clear. First, the distributions are quite right-skewed, with some very large positive daily sales outliers. Second, the median sales are relatively low. There is also considerable variability between individual stores. For instance, STore 1013 appears heavily concentrated in the low-end of the sales spectrum, while Store 1019 has a much wider variation.
+
+<<sales_plot, message=FALSE, fig.cap='Boxplots of daily sales for each of the first nine stores.'>>=
+stores <- unique(bean.data$store)[1:9]
+
+qplot(factor(store), mvm, data = subset(bean.data, store %in% stores), geom = "boxplot", fill = factor(store)) + xlab("Store")
 @
 
 \section{Newton-Raphson Algorithm}
@@ -307,22 +318,19 @@ The marginal distribution of $Y_{i}$ leads to the zero-inflated Poisson probabil
   \end{array}
 \right.
 \]
-The likelihood and log likelihood is as follows
+The likelihood and log likelihood is as follows:
+
 \begin{align*}
 L(\lambda_i, \pi_i) &= \prod_{i = 1}^n h(y_{i}| \lambda_i, \pi_i) \\
 &= \prod_{i = 1}^n [(1 - \pi_i) + \pi_i e^{-\lambda_i}]I(y_{i} = 0) + [\frac{\pi_i e^{-\lambda_i}\lambda_i^{y_{i}}}{y_{i}!}]I(y_{i} > 0) \\
 &= [(1 - \pi_i) + \pi_i e^{-\lambda_i}]I(y_{i} = 0) + [\pi_i e^{-\lambda_i} \lambda_i^{\sum^{n}_{i = 1}y_{i}} \prod_{i = 1}^{n} \frac{1}{y_{i}!}]I(y_{i} > 0) \\
-\ell_{1}(\lambda_i, \pi_i) &= log((1 - \pi_i) + \pi_i e^{-\lambda_i})I(y_{i} = 0) \\
-&= log(1 + \pi_i(e^{-\lambda_i} - 1))I(y_{i} = 0) \\
-\ell_{2}(\lambda_i, \pi_i) &= \bigg[log \pi_i - \lambda_i + \sum_{i = 1}^{n} y_{i} log \lambda_i + \sum_{i = 1}^{n} \frac{1}{y_{i}!}\bigg]I(y_{i} > 0) \\
-\ell(\lambda_i, \pi_i) &= \ell_{1}(\lambda_i, \pi_i) + \ell_{2}(\lambda_i, \pi_i)
+\ell_{1}(\lambda_i, \pi_i) &= \bigg[\log{((1 - \pi_i) + \pi_i e^{-\lambda_i})}\bigg]I(y_{i} = 0) \\
+\ell_{2}(\lambda_i, \pi_i) &= \bigg[\log{(\pi_i)} - \lambda_i + y_{i}\log{(\lambda_i)} - \log{(y_{i}!)}\bigg]I(y_{i} > 0) \\
+\ell_i(\lambda_i, \pi_i) &= \ell_{1}(\lambda_i, \pi_i) + \ell_{2}(\lambda_i, \pi_i) \\
+\ell(\lambda_i, \pi_i) &= \sum_{i=1}^n\ell_i(\lambda_i, \pi_i)
 \end{align*}
-Now, assume $\pi_i = \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}$ and $\lambda_i = e^{\delta_{0} + \delta_{1}x_{i}}$.  Then, 
-\begin{align*}
-\ell_{1}(\lambda_i, \pi_i) &= log\bigg[1 - \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}(exp\{-e^{\delta_{0} + \delta_{1}x_{i}}\} - 1)\bigg] \\
-\ell_{2}(\lambda_i, \pi_i) &= log\bigg(\frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}\bigg) - e^{\delta_{0} + \delta_{1}x_{i}} + \sum_{i = 1}^{n} y_{i} log(e^{\delta_{0} + \delta_{1}x_{i}}) + \sum_{i = 1}^{n} \frac{1}{y_{i}!}\\
-\ell(\lambda_i, \pi_i) &= \ell_{1}(\lambda_i, \pi_i) + \ell_{2}(\lambda_i, \pi_i)
-\end{align*}
+Now, assume $\pi_i = \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}$ and $\lambda_i = e^{\delta_{0} + \delta_{1}x_{i}}$. In other words, we will use a log link for the mean parameter of the poisson distribution, and a logit link for the consumer interest parameter of the zero-inflated portion of the distribution. This will define the systematic model component.
+
 The first partial derivatives are given by
 \begin{align*}
 \frac{\partial \ell(\lambda, \pi)}{\partial \delta_{0}} &= \frac{\partial \ell(\lambda, \pi)}{\partial \lambda}\frac{\partial \lambda}{\partial \delta_{0}} \\
@@ -358,6 +366,8 @@ The second partial derivatives are given by
 \end{align*}
 
 \subsection{Maximum Likelihood Estimation}
+We will use our newton raphson function to obtain MLEs for the four regression parameters for the first nine stores in the dataset. The MLEs are given in Table \ref{tbl:zip.table}. A corresponding plot of the expectation function, where $E(Y_i) = \pi_i\lambda_i$, is given in Figure \ref{fig:zip.plot}.
+
 <<zip.newtraph>>=
 zip.fn <- function(par, y, x) {
     b0 <- par[1]
@@ -385,7 +395,7 @@ zip.loglik <- function(par, y, x) {
     lambda <- exp(d0 + d1*x)
     
     single <- ((y == 0) * log((1 - pi) + pi*exp(-lambda))) +
-              ((y > 0) * (log(pi) + y*log(lambda) - lambda))
+              ((y > 0) * (log(pi) + y*log(lambda) - lambda - lfactorial(y)))
     
     return(sum(single))
 }
@@ -468,7 +478,7 @@ zip.stores <- ldply(stores, function(sto) {
     x <- subset(bean.data, store == sto)$price
     y <- subset(bean.data, store == sto)$mvm
     
-    zip.newtraph <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(5, -5, 5, -5), y = y, x = x)
+    zip.newtraph <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(1, 1, 1, 1), y = y, x = x)
     par.zip.newtraph <- zip.newtraph$par
     
     b0 <- par.zip.newtraph[1]
@@ -488,24 +498,17 @@ zip.table <- ddply(zip.stores[,1:5], .(Store), unique)
 print(xtable(zip.table, digits = c(0, 0, 6, 6, 6, 6), caption = "MLEs for the first nine stores", label = "tbl:zip.table"), table.position = 'H')
 @
 
-<<zip.plot, warning=FALSE>>=
+<<zip.plot, warning=FALSE, fig.cap='Expectation Function for the ZIP model for the first nine stores'>>=
 df1 <- subset(zip.stores, Store %in% stores[1:9])
 df2 <- subset(bean.data, store %in% stores[1:9])
 df3 <- ddply(df2, .(price, store), summarise, actual_mvm = mean(mvm))
 zip.merge <- merge(df1, df3, by.x = c("Price", "Store"), by.y = c("price", "store"))
-sip.merge$model <- "sip"
-zip.merge$model <- "zip"
 
-test <- cbind(sip.merge[,c("Price", "Store", "PredictedSales", "actual_mvm")], zip.merge$PredictedSales)
-names(test)[3:5] <- c("SIP", "Actual", "ZIP")
-predict.melt <- melt(test, id.vars = c("Price", "Store", "Actual"))
-
-qplot(Price, value, data = predict.melt, geom = "line", facets=~Store, colour = variable, group = variable, alpha = I(0.4), size = I(3)) +
-    geom_bar(aes(x = Price, y = Actual), stat = "identity", inherit.aes = FALSE) +
-    theme(legend.position = "bottom")
+qplot(Price, PredictedSales, data = zip.merge, geom = "line", facets=~Store, colour = I("blue"), size = I(2)) + geom_bar(aes(x = Price, y = actual_mvm), stat = "identity") + xlim(c(0.3, 0.75))
 @
 
 \subsection{Comparison to pscl}
+We discovered a package available on CRAN, pscl, which claims to be able to fit zero-inflated models for the data. We decided to compare the results obtained from our manual work and our own Newton-Raphson function to the results from this function, which claims to use optim underneath. The comparison is given in Table \ref{tbl:zip.compare}. The results match this package very closely, although it appears that they define the consumer interest parameter in the opposite manner. In other words, $\pi_i$ represents the probability of no consumer interest, while our interpretation is the opposite.
 
 <<zip.pscl, results='asis'>>=
 zip.pscl.table <- ldply(stores, function(sto) {
@@ -524,6 +527,7 @@ print(xtable(my.df, digits = c(0, 0, rep(6, 8)), caption = "Comparison of MLEs t
 @
 
 \section{Zero-Inflated Gamma-Poisson}
+We want to develop a model that can take into account the extra variability that could come from the various days on which the covariate occurs. Therefore, we need a model that uses different Poisson distributions for the values of $Y_i$ that share a covariate value on several different days. This idea suggests the use of a Gamma-Poisson distribution. We formulate the model in the following section.
 
 \subsection{Model Formulation}
 $Y_i|\lambda_i \sim \text{independent Poisson}(\lambda_i)$ \\
@@ -734,10 +738,10 @@ To fit the model, we will use maximum likelihood estimation to once again estima
 Table \ref{tbl:zigp.table} gives the MLEs for the four regression parameters, and the $\alpha$ parameter. In Figure \ref{fig:zigp.plot}, a plot of the expectation function $E(Y)$ versus values of price is displayed. The fit appears to be pretty good in spite of the relative noise in the data.
 
 <<zigp.table, results='asis'>>=
-zigp.table <- data.frame(t(par.zigp.newtraph))
-names(zigp.table) <- c("b0", "b1", "d0", "d1")
+zigp.table <- data.frame(t(c(par.zigp.newtraph, alpha = zigp.newtraph$alpha)))
+names(zigp.table) <- c("b0", "b1", "d0", "d1", "alpha")
 
-print(xtable(zigp.table, digits = c(0, 6, 6, 6, 6), caption = "MLEs for the model for all stores", label = "tbl:zigp.table"), table.position = 'H')
+print(xtable(zigp.table, digits = c(0, 6, 6, 6, 6, 3), caption = "MLEs for the model for all stores", label = "tbl:zigp.table"), table.position = 'H')
 @
 
 <<zigp.plot, warning=FALSE, fig.cap='Plot of the expectation function of the ZIGP model versus values of price, overlaying the actual data'>>=
@@ -766,7 +770,7 @@ names(pscl.par.zigp) <- c("b0_pscl", "b1_pscl", "d0_pscl", "d1_pscl")
 names(par.zigp.newtraph) <- c("b0", "b1", "d0", "d1")
 my.df <- data.frame(t(c(par.zigp.newtraph, pscl.par.zigp)))
 
-print(xtable(my.df, digits = c(0, rep(6, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.position = 'H')
+print(xtable(my.df, digits = c(0, rep(6, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zigp.compare"), table.position = 'H')
 @
 
 \section{Model Assessment}
