@@ -357,3 +357,6 @@ qplot(beta0,geom='histogram',binwidth=.1,data=mcmc_store9,main='Store 9, beta_0'
 qplot(beta1,geom='histogram',binwidth=.1,data=mcmc_store9,main='Store 9, beta_1')+geom_vline(xintercept=mean(mcmc_store9$beta1),color='red')
 qplot(delta0,geom='histogram',binwidth=.01,data=mcmc_store9,main='Store 9, delta_0')+geom_vline(xintercept=mean(mcmc_store9$delta0),color='red')
 qplot(delta1,geom='histogram',binwidth=.01,data=mcmc_store9,main='Store 9, delta_1')+geom_vline(xintercept=mean(mcmc_store9$delta1),color='red')
+
+median(mcmc_store6$delta0)
+
