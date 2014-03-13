@@ -3,7 +3,7 @@
 \usepackage{hyperref}
 \usepackage[margin=1in]{geometry}
 \usepackage{float}
-\usepackage{amsmath}
+\usepackage{amsmath,amssymb,accents}
 
 \begin{document}
 <<concordance, echo=FALSE>>=
@@ -774,6 +774,37 @@ my.df <- data.frame(t(c(par.zigp.newtraph, pscl.par.zigp)))
 
 print(xtable(my.df, digits = c(0, rep(6, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.position = 'H')
 @
+
+\section{Bayesian Estimation of ZIP Model}
+We now consider the ZIP model within a Bayesian framework.  The model we consider is a straightforward Bayesian model for one store with noninformative priors on the model parameters. 
+  \begin{align*}
+  Y_i & \sim \text{Poisson}(z_i\cdot \lambda_i ) \\
+  Z_i & \sim \text{Bernoulli}(p_i) \\
+  \log(\lambda_i) & = \beta_0 + \beta_1 x_i \\
+  \log\left(\frac{p_i}{1-p_i}\right) & = \delta_0 + \delta_1 x_i \\
+  (\beta_0, \beta_1)^T \equiv \underaccent{\tilde}{\beta} & \sim MVN\left(\binom{0}{0}, \Sigma_\beta \right) \\
+  (\delta_0, \delta_1)^T \equiv \underaccent{\tilde}{\delta} & \sim MVN\left(\binom{0}{0}, \Sigma_\delta \right)
+  \end{align*}
+  where $\Sigma_\beta = \Sigma_\delta = \begin{bmatrix} 100 & 0 \\ 0 & 100 \end{bmatrix}$, so we assume that $\beta_0,\beta_1$ are independent and $\delta_0,\delta_1$ are independent.  We also assume that $\underaccent{\tilde}{\beta}$ and $\underaccent{\tilde}{\delta}$ are independent.  The priors of $ \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}$ are given by
+  \begin{align*}
+  \pi( \underaccent{\tilde}{\beta}) & = \frac{1}{2\pi}|\Sigma_\beta|^{-\frac{1}{2}} \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \\
+   \pi( \underaccent{\tilde}{\delta}) & = \frac{1}{2\pi}|\Sigma_\delta|^{-\frac{1}{2}} \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
+  \end{align*}
+   The joint distribution of the data is 
+  $$f(\underaccent{\tilde}{y}| \underaccent{\tilde}{x}, \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}) = \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\}.$$ 
+  The joint posterior distribution is 
+  \begin{align*}
+   p(\underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}|\underaccent{\tilde}{y}, \underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}| \underaccent{\tilde}{x}, \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}) \pi(\underaccent{\tilde}{\beta}) \pi(\underaccent{\tilde}{\delta}) \\
+     & \propto \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \\
+	& \times \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \times  \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
+  \end{align*}
+  We cannot sample from this distribution directly, so we use Metropolis-Hastings within Gibbs to generate samples from the joint distribution by iteratively sampling from the full conditional distributions of $\underaccent{\tilde}{\beta}$ and $\underaccent{\tilde}{\delta}$. These full conditional distributions are given by
+  \begin{align*}
+  p(\underaccent{\tilde}{\beta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\delta}) &\propto  \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \\
+   p(\underaccent{\tilde}{\delta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\beta}) &\propto \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times  \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
+  \end{align*}
+
+
 
 \clearpage
 
