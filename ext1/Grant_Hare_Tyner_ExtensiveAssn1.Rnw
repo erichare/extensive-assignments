@@ -3,7 +3,7 @@
 \usepackage{hyperref}
 \usepackage[margin=1in]{geometry}
 \usepackage{float}
-\usepackage{amsmath,amssymb,accents}
+\usepackage{amsmath}
 
 \begin{document}
 <<concordance, echo=FALSE>>=
@@ -273,7 +273,7 @@ print(xtable(my.df, digits = c(0, 0, rep(6, 4)), caption = "Comparison of MLEs t
 
 \subsection{Model Formulation}
 
-Now, define another set of random variables $\{Z_{i}: i = 1,...,n\}$ associated with consumer interest in green beans. Take these random variables to be independent and identically distributed with a binary probability mass function having parameter $\pi$. So,
+Now, define another set of random variables $\{Z_{i}: i = 1,...,n\}$ associated with consumer interest in green beans. Take these random variables to be independent and identically distributed with a binary probability mass function having parameter $\pi_i$. So,
 \[Z_{i} = \left\{
   \begin{array}{lr}
     1 & : \text{consumer interested}\\
@@ -281,10 +281,10 @@ Now, define another set of random variables $\{Z_{i}: i = 1,...,n\}$ associated 
   \end{array}
 \right.
 \]
-Then, for $0 < p < 1$, 
-\[g(z_{i}|\pi) = \left\{
+Then, for $0 < \pi_i < 1$, 
+\[g(z_{i}|\pi_i) = \left\{
   \begin{array}{lr}
-    \pi^{z_{i}}(1 - \pi)^{1 - z_{i}} & : z_{i} = 0, 1 \\
+    \pi_i^{z_{i}}(1 - \pi_i)^{1 - z_{i}} & : z_{i} = 0, 1 \\
     0 & : \text{otherwise}
   \end{array}
 \right.
@@ -292,36 +292,36 @@ Then, for $0 < p < 1$,
 Define random variables associated with units sold given $Z_{i} = 1$,
 \begin{align*}
 P(Y_{i} = 0) &= P(Y_{i} = 0 | Z_{i} = 0)P(Z_{i} = 0) + P(Y_{i} = 0 | Z_{i} = 1)P(Z_{i} = 1) \\
-&= 1(1 - \pi) + \frac{1}{0!}\lambda^{0}e^{-\lambda}\pi \\
-&= (1- \pi) + \pi exp(-\lambda) \hspace{0.2 cm} \text{and} \\
+&= (1 - \pi_i) + \frac{1}{0!}\lambda_i^{0}e^{-\lambda_i}\pi_i \\
+&= (1- \pi_i) + \pi_ie^{-\lambda_i} \hspace{0.2 cm} \text{and} \\
 P(Y_{i} = y) &= P(Y_{i} = y | Z_{i} = 0)P(Z_{i} = 0) + P(Y_{i} = y | Z_{i} = 1)P(Z_{i} = 1) \\
-&= 0 + \frac{1}{y_{i}!}\lambda^{y_{i}}e^{-\lambda}\pi \\
-&= \frac{\pi \lambda^{y_{i}}e^{-\lambda}}{y_{i}!}
+&= 0 + \frac{1}{y_{i}!}\lambda_i^{y_{i}}e^{-\lambda_i}\pi_i \\
+&= \frac{\pi_i \lambda_i^{y_{i}}e^{-\lambda_i}}{y_{i}!}
 \end{align*}
-The marginal distribution of $Y_{i}$ leads to the zero-inflated Poisson probability mass function. for $\lambda > 0$ and $0 < \pi < 1$,
-\[h(y_{i}|\pi, \lambda) = \left\{
+The marginal distribution of $Y_{i}$ leads to the zero-inflated Poisson probability mass function. for $\lambda_i > 0$ and $0 < \pi_i < 1$,
+\[h(y_{i}|\pi_i, \lambda_i) = \left\{
   \begin{array}{lr}
-    (1 - \pi) + \pi exp(-\lambda)& : y_{i} = 0 \\
-      \pi \lambda^{y_{i}}e^{-\lambda}\frac{1}{y_{i}!} & : y_{i} > 0 \\
+    (1 - \pi_i) + \pi_ie^{-\lambda_i}& : y_{i} = 0 \\
+      \pi_i\lambda_i^{y_{i}}e^{-\lambda_i}\frac{1}{y_{i}!} & : y_{i} > 0 \\
       0 & : \hspace{0.1 cm} \text{otherwise}
   \end{array}
 \right.
 \]
 The likelihood and log likelihood is as follows
 \begin{align*}
-L(\lambda, \pi) &= \prod_{i = 1}^n h(y_{i}| \lambda, \pi) \\
-&= \prod_{i = 1}^n [(1 - \pi) + \pi e^{-\lambda}]I(y_{i} = 0) + [\frac{\pi e^{-\lambda}\lambda^{y_{i}}}{y_{i}!}]I(y_{i} > 0) \\
-&= [(1 - \pi) + \pi e^{-\lambda}]I(y_{i} = 0) + [\pi e^{-\lambda} \lambda^{\sum^{n}_{i = 1}y_{i}} \prod_{i = 1}^{n} \frac{1}{y_{i}!}]I(y_{i} > 0) \\
-\ell_{1}(\lambda, \pi) &= log((1 - \pi) + \pi e^{-\lambda})I(y_{i} = 0) \\
-&= log(1 + \pi(e^{-\lambda} - 1))I(y_{i} = 0) \\
-\ell_{2}(\lambda, \pi) &= \bigg[log \pi - \lambda + \sum_{i = 1}^{n} y_{i} log \lambda + \sum_{i = 1}^{n} \frac{1}{y_{i}!}\bigg]I(y_{i} > 0) \\
-\ell(\lambda, \pi) &= \ell_{1}(\lambda, \pi) + \ell_{2}(\lambda, \pi)
+L(\lambda_i, \pi_i) &= \prod_{i = 1}^n h(y_{i}| \lambda_i, \pi_i) \\
+&= \prod_{i = 1}^n [(1 - \pi_i) + \pi_i e^{-\lambda_i}]I(y_{i} = 0) + [\frac{\pi_i e^{-\lambda_i}\lambda_i^{y_{i}}}{y_{i}!}]I(y_{i} > 0) \\
+&= [(1 - \pi_i) + \pi_i e^{-\lambda_i}]I(y_{i} = 0) + [\pi_i e^{-\lambda_i} \lambda_i^{\sum^{n}_{i = 1}y_{i}} \prod_{i = 1}^{n} \frac{1}{y_{i}!}]I(y_{i} > 0) \\
+\ell_{1}(\lambda_i, \pi_i) &= log((1 - \pi_i) + \pi_i e^{-\lambda_i})I(y_{i} = 0) \\
+&= log(1 + \pi_i(e^{-\lambda_i} - 1))I(y_{i} = 0) \\
+\ell_{2}(\lambda_i, \pi_i) &= \bigg[log \pi_i - \lambda_i + \sum_{i = 1}^{n} y_{i} log \lambda_i + \sum_{i = 1}^{n} \frac{1}{y_{i}!}\bigg]I(y_{i} > 0) \\
+\ell(\lambda_i, \pi_i) &= \ell_{1}(\lambda_i, \pi_i) + \ell_{2}(\lambda_i, \pi_i)
 \end{align*}
-Now, assume $\pi = \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}$ and $\lambda = e^{\delta_{0} + \delta_{1}x_{i}}$.  Then, 
+Now, assume $\pi_i = \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}$ and $\lambda_i = e^{\delta_{0} + \delta_{1}x_{i}}$.  Then, 
 \begin{align*}
-\ell_{1}(\lambda, \pi) &= log\bigg[1 - \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}(exp\{-e^{\delta_{0} + \delta_{1}x_{i}}\} - 1)\bigg] \\
-\ell_{2}(\lambda, \pi) &= log\bigg(\frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}\bigg) - e^{\delta_{0} + \delta_{1}x_{i}} + \sum_{i = 1}^{n} y_{i} log(e^{\delta_{0} + \delta_{1}x_{i}}) + \sum_{i = 1}^{n} \frac{1}{y_{i}!}\\
-\ell(\lambda, \pi) &= \ell_{1}(\lambda, \pi) + \ell_{2}(\lambda, \pi)
+\ell_{1}(\lambda_i, \pi_i) &= log\bigg[1 - \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}(exp\{-e^{\delta_{0} + \delta_{1}x_{i}}\} - 1)\bigg] \\
+\ell_{2}(\lambda_i, \pi_i) &= log\bigg(\frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}\bigg) - e^{\delta_{0} + \delta_{1}x_{i}} + \sum_{i = 1}^{n} y_{i} log(e^{\delta_{0} + \delta_{1}x_{i}}) + \sum_{i = 1}^{n} \frac{1}{y_{i}!}\\
+\ell(\lambda_i, \pi_i) &= \ell_{1}(\lambda_i, \pi_i) + \ell_{2}(\lambda_i, \pi_i)
 \end{align*}
 The first partial derivatives are given by
 \begin{align*}
@@ -712,7 +712,7 @@ To fit the model, we will use maximum likelihood estimation to once again estima
     \frac{\partial^2 \ell_i}{\partial \beta_j^2} & = \frac{\partial^2 \ell_i}{\partial \pi_i^2}\frac{\partial \pi_i}{\partial \beta_j} +\frac{\partial^2 \pi_i}{\partial \beta_j^2}\frac{\partial \ell_i}{\partial \pi_i}  \quad \text{for $j=0,1$} \\
     \frac{\partial^2 \ell_i}{\partial \beta_0\beta_1} & = \frac{\partial^2 \ell_i}{\partial \pi_i^2} \frac{\partial \pi_i}{\partial \beta_0} \frac{\partial \pi_i}{\partial \beta_1}+ \frac{\partial^2 \pi_i}{\partial \beta_0 \partial \beta_1}\frac{\partial \ell_i}{\partial \pi_i} =  \frac{\partial^2 \ell_i}{\partial \beta_1\beta_0} \\
         \frac{\partial^2 \ell_i}{\partial \delta_j^2} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2}\frac{\partial \mu_i}{\partial \delta_j} +\frac{\partial^2 \mu_i}{\partial \delta_j^2}\frac{\partial \ell_i}{\partial \mu_i}  \quad \text{for $j=0,1$} \\
-	  \frac{\partial^2 \ell_i}{\partial \delta_0\delta_1} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial \mu_i}{\partial \delta_0} \frac{\partial \mu_i}{\partial \delta_1}+ \frac{\partial^2 \mu_i}{\partial \delta_0 \partial \delta_1}\frac{\partial \ell_i}{\partial \mu_i} =  \frac{\partial^2 \ell_i}{\partial \delta_1\delta_0} \\
+      \frac{\partial^2 \ell_i}{\partial \delta_0\delta_1} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial \mu_i}{\partial \delta_0} \frac{\partial \mu_i}{\partial \delta_1}+ \frac{\partial^2 \mu_i}{\partial \delta_0 \partial \delta_1}\frac{\partial \ell_i}{\partial \mu_i} =  \frac{\partial^2 \ell_i}{\partial \delta_1\delta_0} \\
 	  \frac{\partial^2 \ell_i}{\partial \beta_j\delta_k}& = \frac{\partial^2 \ell_i}{\partial \pi_i \partial \mu_i} \frac{\partial \pi_i}{\partial \beta_j}\frac{\partial \mu_i}{\partial \delta_k}  \quad \text{for $j,k =0,1$}
 	    \end{align*}
   \begin{align*}
@@ -822,52 +822,6 @@ chi.table <- ldply(sort(unique(bean.data$price)), function(pr) {
 
 xtable(chi.table, display = c("d", "f", "E", "E", "E", "s"), digits = c(0, 2, 4, 4, 4, 0))
 @
-
-\subsection{Comparison with pscl}
-The R package pscl includes a function to fit a zero-inflated negative-binomial model, statistically equivalent to a zero-inflated Gamma-Poisson mixture model. In this section, we will fit such a model and compare to the results derived by hand.
-
-<<zigp.pscl, results='asis'>>=
-pscl.zigp <- zeroinfl(mvm ~ price, data = bean.data, dist = "negbin")
-
-pscl.par.zigp <- c(pscl.zigp$coefficients$zero[1], pscl.zigp$coefficients$zero[2], pscl.zigp$coefficients$count[1], pscl.zigp$coefficients$count[2])
-pscl.par.zigp <- as.numeric(pscl.par.zigp)
-names(pscl.par.zigp) <- c("b0_pscl", "b1_pscl", "d0_pscl", "d1_pscl")
-
-names(par.zigp.newtraph) <- c("b0", "b1", "d0", "d1")
-my.df <- data.frame(t(c(par.zigp.newtraph, pscl.par.zigp)))
-
-print(xtable(my.df, digits = c(0, rep(6, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.position = 'H')
-@
-
-\section{Bayesian Estimation of ZIP Model}
-We now consider the ZIP model within a Bayesian framework.  The model we consider is a straightforward Bayesian model for one store with noninformative priors on the model parameters. 
-  \begin{align*}
-  Y_i & \sim \text{Poisson}(z_i\cdot \lambda_i ) \\
-  Z_i & \sim \text{Bernoulli}(p_i) \\
-  \log(\lambda_i) & = \beta_0 + \beta_1 x_i \\
-  \log\left(\frac{p_i}{1-p_i}\right) & = \delta_0 + \delta_1 x_i \\
-  (\beta_0, \beta_1)^T \equiv \underaccent{\tilde}{\beta} & \sim MVN\left(\binom{0}{0}, \Sigma_\beta \right) \\
-  (\delta_0, \delta_1)^T \equiv \underaccent{\tilde}{\delta} & \sim MVN\left(\binom{0}{0}, \Sigma_\delta \right)
-  \end{align*}
-  where $\Sigma_\beta = \Sigma_\delta = \begin{bmatrix} 100 & 0 \\ 0 & 100 \end{bmatrix}$, so we assume that $\beta_0,\beta_1$ are independent and $\delta_0,\delta_1$ are independent.  We also assume that $\underaccent{\tilde}{\beta}$ and $\underaccent{\tilde}{\delta}$ are independent.  The priors of $ \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}$ are given by
-  \begin{align*}
-  \pi( \underaccent{\tilde}{\beta}) & = \frac{1}{2\pi}|\Sigma_\beta|^{-\frac{1}{2}} \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \\
-   \pi( \underaccent{\tilde}{\delta}) & = \frac{1}{2\pi}|\Sigma_\delta|^{-\frac{1}{2}} \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
-  \end{align*}
-   The joint distribution of the data is 
-  $$f(\underaccent{\tilde}{y}| \underaccent{\tilde}{x}, \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}) = \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\}.$$ 
-  The joint posterior distribution is 
-  \begin{align*}
-   p(\underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}|\underaccent{\tilde}{y}, \underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}| \underaccent{\tilde}{x}, \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}) \pi(\underaccent{\tilde}{\beta}) \pi(\underaccent{\tilde}{\delta}) \\
-     & \propto \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \\
-	& \times \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \times  \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
-  \end{align*}
-  We cannot sample from this distribution directly, so we use Metropolis-Hastings within Gibbs to generate samples from the joint distribution by iteratively sampling from the full conditional distributions of $\underaccent{\tilde}{\beta}$ and $\underaccent{\tilde}{\delta}$. These full conditional distributions are given by
-  \begin{align*}
-  p(\underaccent{\tilde}{\beta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\delta}) &\propto  \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \\
-   p(\underaccent{\tilde}{\delta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\beta}) &\propto \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times  \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
-  \end{align*}
-
 
 \clearpage
 
