@@ -3,7 +3,7 @@
 \usepackage{hyperref}
 \usepackage[margin=1in]{geometry}
 \usepackage{float}
-\usepackage{amsmath}
+\usepackage{amsmath,amssymb,accents}
 
 \begin{document}
 <<concordance, echo=FALSE>>=
@@ -44,15 +44,15 @@ bean.indiv <- subset(bean.data, store == 1011)
 \setcounter{page}{1}
 
 \section{Exploratory Analysis}
-The objective of this problem is to devise a model to describe all or a large part of the stores. We will first explore the data to see different behaviors. Then we shall develop a model for individual stores and a model the entire region as a whole. For both models we will assume that sales and price are each independent over time. In the process of exploration, we have determined that stores with ID 7000 and greater do not follow the same trends as the rest of the data. Therefore, we will exclude those stores from later analysis.
+The objective of this project is to devise a model to describe all or a large part of the stores. We will first explore the data to see its different behaviors. Then we develop a model for individual stores and a model for the entire region. For all models we will assume that sales and price are each independent over time. 
 
-Figure \ref{fig:price_plot} displays histograms of the sales for each value of price in Store 1011. A few things are immediately clear in the data. First, stores price green beans at specific prices much more frequently than others. In particular, Store 1011 seemed to mostly price the green beans at either 0.68 or 0.77. Secondly, the zero-inflated nature of the data is very clear, with a large peak at zero sales.
+Figure \ref{fig:price_plot} displays histograms of the sales for each value of price in Store 1011. A few things are immediately clear in the data. First, stores price green beans at specific prices much more frequently than others. In particular, Store 1011 seemed to mostly price the green beans at either 0.68 or 0.77. Secondly, the zero-inflated nature of the data is very clear, with a large peak at zero sales for nearly all prices.
 
 <<price_plot, message=FALSE, fig.cap='Histograms of sales for Store 1011 for each price.'>>=
 qplot(mvm, data = bean.indiv, geom = "histogram") + facet_wrap(~price)
 @
 
-Figure \ref{fig:sales_plot} displays boxplots of the daily sales for each of the first nine stores in the data. A few things become clear. First, the distributions are quite right-skewed, with some very large positive daily sales outliers. Second, the median sales are relatively low. There is also considerable variability between individual stores. For instance, STore 1013 appears heavily concentrated in the low-end of the sales spectrum, while Store 1019 has a much wider variation.
+Figure \ref{fig:sales_plot} displays boxplots of the daily sales for each of the first nine stores in the data. A few things become clear. First, the distributions are extremely right-skewed, with some very large positive daily sales outliers. Second, the median sales are relatively low. There is also considerable variability between individual stores. For instance, Store 1013 has the smallest range of sales and th smallest maximum sales, while Stores 1019 and 1027 have a lot of variation in green bean sales.  Finally, in the process of exploration, we have determined that stores with ID 7000 and greater do not follow the same trends as the rest of the data. For example, after fitting our ZIP model to them, they showed that expected sales and consumer interest \textit{increased} as price increased. Therefore, we will exclude those stores from later analysis, as the consumers at these stores clearly have unusually inelastic demand for green beans.
 
 <<sales_plot, message=FALSE, fig.cap='Boxplots of daily sales for each of the first nine stores.'>>=
 stores <- unique(bean.data$store)[1:9]
@@ -61,7 +61,7 @@ qplot(factor(store), mvm, data = subset(bean.data, store %in% stores), geom = "b
 @
 
 \section{Newton-Raphson Algorithm}
-In the spirit of conducting as much of this analysis ``by-hand" as possible, we elected to write our own Newton-Raphson function based on the STAT 520 course notes. This function accepts four required parameters, a function which returns the value of the log likelihood for given parameters which we are interested in maximizing, functions that return the values of the gradient and hessian respectly, and then starting values for the parameters that these functions accept.
+In the spirit of conducting as much of this analysis ``by-hand" as possible, we elected to write our own Newton-Raphson function based on the STAT 520 course notes. This function accepts four required parameters: a function which returns the value of the log likelihood for the parameters which we are interested in maximizing, functions that return the values of the gradient and hessian, and starting values for the parameters that these functions accept.
 
 Other parameters include:
 \begin{itemize}
@@ -73,7 +73,7 @@ Other parameters include:
     \item debug - A boolean indicating whether to print debug messages
 \end{itemize}
 
-This function will return the Maximum Likelihood Estimates of the parameters given in the loglik, gradient, and hessian functions. The full code is reproduced below.
+This function will return the Maximum Likelihood Estimates of the parameters given in the loglik, gradient, and hessian functions. The full code is reproduced starting on page 4.
 
 <<newtraph, echo=TRUE>>=
 newton.raphson <- function(loglik, gradient, hessian, start, lower = rep(-Inf, length(start)), upper = rep(Inf, length(start)), tol = rep(1e-2, 3), max.iterations = 100, step.halving = TRUE, debug = FALSE, ...) {
@@ -124,20 +124,22 @@ We will use this function to determine the MLEs for the three models presented h
 
 \subsection{Model Formulation}
 
-As a baseline, consider a simple poisson regression model. Define random variables $\{Y_{i}: i = 1,..., n\}$ associated with the quantity of number of units of green beans sold on day $i$ in an individual store at a fixed price.  In this case, $i$ indexes days that the store was selling green bean units for a fixed price $x$.  Let the distribution of $Y_{i}$ be Poisson. Then,
+We begin by considering a simple poisson regression model as a baseline to demonstrate the necessity of fitting the zero-inflated models later. Define random variables $\{Y_{i}: i = 1,..., n\}$ to be the number of cans of green beans sold on day $i$ in an individual store at a fixed price. Let the distribution of $Y_{i}$ be Poisson with mean $\lambda_i$. The probability mass function and likelihood are then
 \begin{align*}
-f(y_{i}|\lambda_i) = \frac{e^{-\lambda_i}\lambda_i^{y_{i}}}{y_{i}!}, y_{i} > 0
+f(y_{i}|\lambda_i) & = \frac{e^{-\lambda_i}\lambda_i^{y_{i}}}{y_{i}!}, y_{i} > 0 \\
+L(\lambda|y_1,\dots,y_n) &= \prod_{i = 1}^n f(y_{i}| \lambda_i) 
 \end{align*}
-and
+Notice that we have allowed each $Y_i$ to have different expected value. We want $\lambda_i$ to vary because we wish to model the expected sales on day $i$ as a linear function of price on that day, $x_i$.
 \begin{align*}
 L(\lambda_i) &= \prod_{i = 1}^n f(y_{i}| \lambda_i) \\
 &= \prod_{i = 1}^n \frac{e^{-\lambda_i}\lambda_i^{y_{i}}}{y_{i}!} \\
 &= e^{-\lambda_i}\lambda_i^{\sum_{i = 1}^{n} y_{i}} \prod_{i = 1}^{n} \frac{1}{y_{i}!}
 \end{align*}
-Now, we will use a log-link to model the systematic component. In other words, $\lambda_i = e^{\delta_{0} + \delta_{1}x_{i}}$. Then,
+In the typical GLM fashion, we will use a log link function to model the systematic component, i.e., $\lambda_i = e^{\delta_{0} + \delta_{1}x_{i}}$. Then,
 
 \begin{align*}
-\ell_i(\lambda_i) &= y_i\log{(\lambda_i)} - \lambda_i - \log{(y_i!)}
+\ell_i(\lambda_i|y_i) &= y_i\log{(\lambda_i)} - \lambda_i - \log{(y_i!)} \\
+\ell(\lambda| y_1, \dots, y_n) & = \sum\limits_{i=1}^n y_i\log{(\lambda_i)} - \lambda_i - \log{(y_i!)}
 \end{align*}
 
 \subsection{Maximum Likelihood Estimation}
@@ -145,26 +147,25 @@ Now, we will use a log-link to model the systematic component. In other words, $
 \subsubsection{First Derivatives}
 
 \begin{align*}
-\frac{\partial \ell(\lambda_i)}{\partial \lambda_i} &= \frac{y_i}{\lambda_i} - 1 \\
+\frac{\partial \ell_i}{\partial \delta_{j}} &= \frac{\partial \ell_i}{\partial \lambda_i}\frac{\partial \lambda_i}{\partial \delta_{j}} \quad \text{for $j=0,1$}\\
+\frac{\partial \ell_i}{\partial \lambda_i} &= \frac{y_i}{\lambda_i} - 1 \\
 \frac{\partial \lambda_i}{\partial \delta_{0}} &= e^{\delta_{0} + \delta_{1}x_{i}} \\
-\frac{\partial \lambda_i}{\partial \delta_{1}} &= x_ie^{\delta_{0} + \delta_{1}x_{i}} \\ \\
-\frac{\partial \ell(\lambda_i)}{\partial \delta_{0}} &= \frac{\partial \ell(\lambda_i)}{\partial \lambda_i}\frac{\partial \lambda_i}{\partial \delta_{0}} \\
-\frac{\partial \ell(\lambda_i)}{\partial \delta_{1}} &= \frac{\partial \ell(\lambda_i)}{\partial \lambda_i}\frac{\partial \lambda_i}{\partial \delta_{1}}
+\frac{\partial \lambda_i}{\partial \delta_{1}} &= x_ie^{\delta_{0} + \delta_{1}x_{i}} 
 \end{align*}
 
 \subsubsection{Second Derivatives}
 
 \begin{align*}
-\frac{\partial^2 \ell(\lambda_i)}{\partial \lambda_i^{2}} &= -\frac{y_i}{\lambda_i^2} \\
+\frac{\partial^2 \ell_i}{\partial \lambda_i^{2}} &= -\frac{y_i}{\lambda_i^2} \\
 \frac{\partial^2 \lambda_i}{\partial \delta_{0}^2} &= e^{\delta_{0} + \delta_{1}x_{i}} \\
 \frac{\partial^2 \lambda_i}{\partial \delta_{1}^2} &= x_i^2e^{\delta_{0} + \delta_{1}x_{i}} \\
 \frac{\partial^2 \lambda_i}{\partial \delta_{0}\delta_{1}} &= x_ie^{\delta_{0} + \delta_{1}x_{i}} \\ \\
-\frac{\partial^2 \ell(\lambda_i)}{\partial \delta_{0}^{2}} &= \frac{\partial^2 \ell(\lambda_i)}{\partial \lambda_i^{2}}\frac{\partial \lambda_i}{\partial \delta_{0}}\frac{\partial \lambda_i}{\partial \delta_{0}} + \frac{\partial^2 \lambda_i}{\partial \delta_{0}^2}\frac{\partial \ell(\lambda_i)}{\partial \lambda_i} \\
-\frac{\partial^2 \ell(\lambda_i)}{\partial \delta_{1}^{2}} &= \frac{\partial^2 \ell(\lambda_i)}{\partial \lambda_i^{2}}\frac{\partial \lambda_i}{\partial \delta_{1}}\frac{\partial \lambda_i}{\partial \delta_{1}} + \frac{\partial^2 \lambda_i}{\partial \delta_{1}^2}\frac{\partial \ell(\lambda_i)}{\partial \lambda_i} \\
-\frac{\partial^2 \ell(\lambda_i)}{\partial \delta_{0}\delta_{1}} &= \frac{\partial^2 \ell(\lambda_i)}{\partial \lambda_i^{2}}\frac{\partial \lambda_i}{\partial \delta_{0}}\frac{\partial \lambda_i}{\partial \delta_{1}} + \frac{\partial^2 \lambda_i}{\partial \delta_{0}\delta_{1}}\frac{\partial \ell(\lambda_i)}{\partial \lambda_i}
+\frac{\partial^2 \ell_i}{\partial \delta_{0}^{2}} &= \frac{\partial^2 \ell_i}{\partial \lambda_i^{2}}\frac{\partial \lambda_i}{\partial \delta_{0}}\frac{\partial \lambda_i}{\partial \delta_{0}} + \frac{\partial^2 \lambda_i}{\partial \delta_{0}^2}\frac{\partial \ell_i}{\partial \lambda_i} \\
+\frac{\partial^2 \ell_i}{\partial \delta_{1}^{2}} &= \frac{\partial^2 \ell_i}{\partial \lambda_i^{2}}\frac{\partial \lambda_i}{\partial \delta_{1}}\frac{\partial \lambda_i}{\partial \delta_{1}} + \frac{\partial^2 \lambda_i}{\partial \delta_{1}^2}\frac{\partial \ell_i}{\partial \lambda_i} \\
+\frac{\partial^2 \ell_i}{\partial \delta_{0}\delta_{1}} &= \frac{\partial^2 \ell_i}{\partial \lambda_i^{2}}\frac{\partial \lambda_i}{\partial \delta_{0}}\frac{\partial \lambda_i}{\partial \delta_{1}} + \frac{\partial^2 \lambda_i}{\partial \delta_{0}\delta_{1}}\frac{\partial \ell_i}{\partial \lambda_i}
 \end{align*}
 
-The MLEs for the regression parameters for the first nine stores in the data are given in Table \ref{tbl:sip.table}. As expected, in general the sales tends to decrease as the price increases, although the amount to which this is true varies across stores. In Figure \ref{fig:sip.plot}, the expectation function for the first nine stores, along with the actual frequencies of sales is displayed.
+The MLEs for the regression parameters for the first nine stores in the data are given in Table \ref{tbl:sip.table}. As expected, in general the sales tend to decrease as the price increases, although the amount to which this is true varies across stores. In Figure \ref{fig:sip.plot}, the expectation function for the first nine stores, and the actual sales are displayed.
 
 <<sip_newtraph>>=
 sip.fn <- function(par, y, x) {
@@ -250,7 +251,7 @@ sip.stores <- ldply(stores, function(sto) {
 <<sip.table, results='asis'>>=
 sip.table <- ddply(sip.stores[,1:3], .(Store), unique)
 
-print(xtable(sip.table, digits = c(0, 0, 6, 6), caption = "MLEs for the first nine stores", label = "tbl:sip.table"), table.position = 'H', include.rownames = FALSE)
+print(xtable(sip.table, digits = c(0, 0, 4, 4), caption = "MLEs for the first nine stores", label = "tbl:sip.table"), table.position = 'H', include.rownames = FALSE)
 @
 
 <<sip.plot, warning=FALSE, fig.cap='Expectation function for the Simple Poisson model for the first 9 stores.'>>=
@@ -259,11 +260,11 @@ df2 <- subset(bean.data, store %in% stores[1:9])
 df3 <- ddply(df2, .(price, store), summarise, actual_mvm = mean(mvm))
 sip.merge <- merge(df1, df3, by.x = c("Price", "Store"), by.y = c("price", "store"))
 
-qplot(Price, PredictedSales, data = sip.merge, geom = "line", facets=~Store, colour = I("red"), size = I(2)) + geom_bar(aes(x = Price, y = actual_mvm), stat = "identity") + xlim(c(0.3, 0.75))
+qplot(Price, PredictedSales, data = sip.merge, geom = "line", facets=~Store, colour = I("red"), size = I(1.2)) + geom_bar(aes(x = Price, y = actual_mvm), stat = "identity") + xlim(c(0.3, 0.75))
 @
 
 \subsection{Comparison to glm}
-Because of the use of our own Newton-Raphson function, as well as calculating the hessian and the gradient by hand, we decided to do a quick comparison to the results obtained by using the glm function in base R. Table \ref{tbl:sip.compare} illustrates the MLEs for the first nine stores that we calculated, and the MLEs that GLM calculated using the poisson family argument. Our results match out to at least six digits.
+Because we used our own Newton-Raphson function, and calculated the hessian and the gradient by hand, we decided to do a quick comparison to the results obtained by using the glm function in base R. Table \ref{tbl:sip.compare} illustrates the MLEs for the first nine stores that we calculated, and the MLEs that GLM calculated using the poisson family argument. Our results match out to at least six digits, but only four are shown for presentation.
 
 <<sip.glm, results='asis'>>=
 sip.glm.table <- ldply(stores, function(sto) {
@@ -276,97 +277,101 @@ sip.glm.table <- ldply(stores, function(sto) {
 })
 
 my.df <- merge(sip.table, sip.glm.table, by = "Store")
+my.df<-my.df[c('Store','d0','d0_glm','d1','d1_glm')]
 
-print(xtable(my.df, digits = c(0, 0, rep(6, 4)), caption = "Comparison of MLEs to results obtained from glm package", label = "tbl:sip.compare"), table.position = 'H', include.rownames = FALSE)
+print(xtable(my.df, digits = c(0, 0, rep(4, 4)), caption = "Comparison of MLEs to results obtained from glm package", label = "tbl:sip.compare"), table.position = 'H', include.rownames = FALSE)
 @
 
 \section{Zero-Inflated Poisson}
 
 \subsection{Model Formulation}
 
-Now, define another set of random variables $\{Z_{i}: i = 1,...,n\}$ associated with consumer interest in green beans. Take these random variables to be independent and identically distributed with a binary probability mass function having parameter $\pi_i$. So,
+Now we zero-inflate the poisson distribution. Define another set of random variables $\{Z_{i}: i = 1,...,n\}$ associated with consumer interest in green beans. Take these random variables to be independent and identically distributed with a binary probability mass function having parameter $\pi_i$. So,
 \[Z_{i} = \left\{
-  \begin{array}{lr}
+  \begin{array}{ll}
     1 & : \text{consumer interested}\\
     0 & : \text{consumer not interested}
   \end{array}
 \right.
 \]
-Then, for $0 < \pi_i < 1$, 
+where $\pi_i$ represents the expected proportion of store customers on day $i$ that are interested in green beens. 
+Then, for $0 < \pi_i < 1$, the pmf for the consumer interest variable is 
 \[g(z_{i}|\pi_i) = \left\{
-  \begin{array}{lr}
+  \begin{array}{ll}
     \pi_i^{z_{i}}(1 - \pi_i)^{1 - z_{i}} & : z_{i} = 0, 1 \\
     0 & : \text{otherwise}
   \end{array}
 \right.
 \]
-Define random variables associated with units sold given $Z_{i} = 1$,
+Now we zero-inflate the Poisson distribution by conditioning on the latent consumer interest variable:
 \begin{align*}
 P(Y_{i} = 0) &= P(Y_{i} = 0 | Z_{i} = 0)P(Z_{i} = 0) + P(Y_{i} = 0 | Z_{i} = 1)P(Z_{i} = 1) \\
-&= (1 - \pi_i) + \frac{1}{0!}\lambda_i^{0}e^{-\lambda_i}\pi_i \\
-&= (1- \pi_i) + \pi_ie^{-\lambda_i} \hspace{0.2 cm} \text{and} \\
+&= (1- \pi_i) + \pi_ie^{-\lambda_i} \hspace{0.2 cm}  \\
 P(Y_{i} = y) &= P(Y_{i} = y | Z_{i} = 0)P(Z_{i} = 0) + P(Y_{i} = y | Z_{i} = 1)P(Z_{i} = 1) \\
 &= 0 + \frac{1}{y_{i}!}\lambda_i^{y_{i}}e^{-\lambda_i}\pi_i \\
 &= \frac{\pi_i \lambda_i^{y_{i}}e^{-\lambda_i}}{y_{i}!}
 \end{align*}
 The marginal distribution of $Y_{i}$ leads to the zero-inflated Poisson probability mass function. for $\lambda_i > 0$ and $0 < \pi_i < 1$,
 \[h(y_{i}|\pi_i, \lambda_i) = \left\{
-  \begin{array}{lr}
+  \begin{array}{ll}
     (1 - \pi_i) + \pi_ie^{-\lambda_i}& : y_{i} = 0 \\
       \pi_i\lambda_i^{y_{i}}e^{-\lambda_i}\frac{1}{y_{i}!} & : y_{i} > 0 \\
       0 & : \hspace{0.1 cm} \text{otherwise}
   \end{array}
 \right.
 \]
-The likelihood and log likelihood is as follows:
-
+The likelihood and log likelihood for this ZIP model are as follows:
 \begin{align*}
-L(\lambda_i, \pi_i) &= \prod_{i = 1}^n h(y_{i}| \lambda_i, \pi_i) \\
-&= \prod_{i = 1}^n [(1 - \pi_i) + \pi_i e^{-\lambda_i}]I(y_{i} = 0) + [\frac{\pi_i e^{-\lambda_i}\lambda_i^{y_{i}}}{y_{i}!}]I(y_{i} > 0) \\
-&= [(1 - \pi_i) + \pi_i e^{-\lambda_i}]I(y_{i} = 0) + [\pi_i e^{-\lambda_i} \lambda_i^{\sum^{n}_{i = 1}y_{i}} \prod_{i = 1}^{n} \frac{1}{y_{i}!}]I(y_{i} > 0) \\
-\ell_{1}(\lambda_i, \pi_i) &= \bigg[\log{((1 - \pi_i) + \pi_i e^{-\lambda_i})}\bigg]I(y_{i} = 0) \\
-\ell_{2}(\lambda_i, \pi_i) &= \bigg[\log{(\pi_i)} - \lambda_i + y_{i}\log{(\lambda_i)} - \log{(y_{i}!)}\bigg]I(y_{i} > 0) \\
-\ell_i(\lambda_i, \pi_i) &= \ell_{1}(\lambda_i, \pi_i) + \ell_{2}(\lambda_i, \pi_i) \\
-\ell(\lambda_i, \pi_i) &= \sum_{i=1}^n\ell_i(\lambda_i, \pi_i)
+L_i(\lambda_i,\pi_i|y_i) &= [(1 - \pi_i) + \pi_i e^{-\lambda_i}]I(y_{i} = 0) + \left[\frac{\pi_i e^{-\lambda_i}\lambda_i^{y_{i}}}{y_{i}!}\right]I(y_{i} > 0) \\
+L(\lambda, \pi | y_1,\dots, y_n) &= \prod_{i = 1}^n L_i(\lambda_i,\pi_i) \\
+\ell_{i}(\lambda_i, \pi_i|y_i) &= (1-k_i)\cdot\left(\log{((1 - \pi_i) + \pi_i e^{-\lambda_i})}\right) + k_i\cdot\left(\log{(\pi_i)} - \lambda_i + y_{i}\log{(\lambda_i)} - \log{(y_{i}!)}\right)  \\
+\ell(\lambda, \pi|y_1,\dots,y_n) &= \sum_{i=1}^n\ell_i(\lambda_i, \pi_i)
 \end{align*}
-Now, assume $\pi_i = \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}$ and $\lambda_i = e^{\delta_{0} + \delta_{1}x_{i}}$. In other words, we will use a log link for the mean parameter of the poisson distribution, and a logit link for the consumer interest parameter of the zero-inflated portion of the distribution. This will define the systematic model component.
+where $k_i = 0$ if $y_i = 0$ and $k_i = 1$ if $y_i > 0$. \\
+Again, we wish to model the parameters, expected sales and expected proportion of consumers interested on day $i$, as a linear function of price. So we take the canonical link functions for the Poisson and binomial distributions in GLMs: a log link for the expected sales, $\lambda_i$, and a logit link for the expected proportion of consumer interest, $\pi_i$.  So, 
+$$\pi_i = \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{1 + e^{\beta_{0} + \beta_{1}x_{i}}}\quad  \text{and} \quad \lambda_i = e^{\delta_{0} + \delta_{1}x_{i}}.$$
 
-The first partial derivatives are given by
+
+ \subsection{Maximum Likelihood Estimation}
+\subsubsection{First Derivatives}
 \begin{align*}
-\frac{\partial \ell(\lambda, \pi)}{\partial \delta_{0}} &= \frac{\partial \ell(\lambda, \pi)}{\partial \lambda}\frac{\partial \lambda}{\partial \delta_{0}} \\
-\frac{\partial \ell(\lambda, \pi)}{\partial \delta_{1}} &= \frac{\partial \ell(\lambda, \pi)}{\partial \lambda}\frac{\partial \lambda}{\partial \delta_{1}} \\
-\frac{\partial}{\partial \lambda} \ell(\lambda, \pi) &= (\frac{y_{i}}{\lambda} - 1)I(y_{i} > 0) - \frac{\pi e^{-\lambda}}{(1 - \pi) + \pi e^{-\lambda}}I(y_{i} = 0) \\
-\frac{\partial \lambda}{\partial \delta_{0}} &= exp\{\delta_{0} + \delta_{1}x_{i}\} \\
-\frac{\partial \lambda}{\partial \delta_{1}} &= x_{i} exp\{\delta_{0} + \delta_{1}x_{i}\} 
+\frac{\partial \ell_i}{\partial \delta_{j}} &= \frac{\partial \ell_i}{\partial \lambda_i}\frac{\partial \lambda_i}{\partial \delta_{j}} \quad \text{for $j = 0,1$} \\
+\frac{\partial \ell_i}{\partial \beta_{j}} &= \frac{\partial \ell_i}{\partial \pi_i}\frac{\partial \pi_i}{\partial \beta_{j}} \quad \text{for $j = 0,1$} 
 \end{align*}
-
 \begin{align*}
-\frac{\partial \ell(\lambda, \pi)}{\partial \beta_{0}} &= \frac{\partial \ell(\lambda, \pi)}{\partial \pi}\frac{\partial \pi}{\partial \beta_{0}} \\
-\frac{\partial \ell(\lambda, \pi)}{\partial \beta_{1}} &= \frac{\partial \ell(\lambda, \pi)}{\partial \pi}\frac{\partial \pi}{\partial \beta_{1}} \\
-\frac{\partial \ell(\lambda, \pi)}{\partial \pi} &= \bigg[\frac{e^{\lambda} - 1}{e^{\lambda}(\pi - 1) - \pi}\bigg]I(y_{i} = 0) + \frac{1}{\pi}I(y_{i > 0})\\
-\frac{\partial \pi}{\partial \beta_{0}} &= \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{(e^{\beta_{0} + \beta_{1}x_{i}})^2} \\
-\frac{\partial \pi}{\partial \beta_{1}} &= \frac{x_{i}e^{\beta_{0} + \beta_{1}x_{i}}}{(e^{\beta_{0} + \beta_{1}x_{i}})^2}
+\frac{\partial \ell_i}{\partial \lambda_i} &= (1-k_i)\cdot \frac{-\pi_i e^{-\lambda_i}}{1-\pi_i+\pi_ie^{-\lambda_i}}+k_i\cdot \left(-1+\frac{y_i}{\lambda_i}\right) \\
+\frac{\partial \ell_i}{\partial \pi_i} &= (1-k_i)\cdot\frac{-1 + e^{-\lambda_i}}{1-\pi_i+\pi_ie^{-\lambda_i}}+k_i \cdot \frac{1}{\pi_i}\\
+\frac{\partial \lambda_i}{\partial \delta_{0}} &= e^{\delta_{0} + \delta_{1}x_{i}} \\
+\frac{\partial \lambda_i}{\partial \delta_{1}} &= x_{i} e{\delta_{0} + \delta_{1}x_{i}}\\ 
+\frac{\partial \pi}{\partial \beta_{0}} &= \frac{e^{\beta_{0} + \beta_{1}x_{i}}}{(1+e^{\beta_{0} + \beta_{1}x_{i}})^2} \\
+\frac{\partial \pi}{\partial \beta_{1}} &= \frac{x_{i}e^{\beta_{0} + \beta_{1}x_{i}}}{(1+e^{\beta_{0} + \beta_{1}x_{i}})^2}
 \end{align*}
 
-The second partial derivatives are given by
+\subsubsection{Second Derivatives}
 \begin{align*}
-\frac{\partial^{2} \ell(\lambda, \pi)}{\partial \delta_{0}^{2}} &= \frac{\partial^{2} \ell(\lambda, \pi)}{\partial \lambda^{2}}\frac{\partial^{2} \lambda}{\partial \delta_{0}^2} \\
-\frac{\partial^{2} \ell(\lambda, \pi)}{\partial \delta_{1}^2} &= \frac{\partial^{2} \ell(\lambda, \pi)}{\partial \lambda^{2}}\frac{\partial^{2} \lambda}{\partial \delta_{1}^2} \\
-\frac{\partial^{2}}{\partial \lambda^{2}} \ell(\lambda, \pi) &= (\frac{-1}{\lambda^{2}})I(y_{i} > 0) - \frac{1}{[(1 - \pi) + \pi e^{-\lambda}]^2}I(y_{i} > 0) \\
-\frac{\partial^{2} \lambda}{\partial \delta_{0}^{2}} &= exp\{\delta_{0} + \delta_{1}x_{i}\} \\
-\frac{\partial^2 \lambda}{\partial \delta_{1}^2} &= x_{i}^{2} exp\{\delta_{0} + \delta_{1}x_{i}\} 
+\frac{\partial^2 \ell_i}{\partial \delta_j^2} & = \frac{\partial^2 \ell_i}{\partial \lambda_i^2}\frac{\partial \lambda_i}{\partial \delta_j}+\frac{\partial^2 \lambda_i}{\partial \delta_j^2}\frac{\partial \ell_i}{\partial \lambda_i} \quad \text{for $j = 0,1$}\\
+\frac{\partial^2 \ell_i}{\partial \delta_j \partial \delta_k} & = \frac{\partial^2 \ell_i}{\partial \lambda_i^2}\frac{\partial \lambda_i}{\partial \delta_j}\frac{\partial \lambda_i}{\partial \delta_k}+\frac{\partial^2 \lambda_i}{\partial \delta_j \partial \delta_k}\frac{\partial \ell_i}{\partial \lambda_i} \quad \text{for $j,k = 0,1$} \\
+\frac{\partial^2 \ell_i}{\partial \beta_j^2} & = \frac{\partial^2 \ell_i}{\partial \pi_i^2}\frac{\partial \pi_i}{\partial \beta_j}+\frac{\partial^2 \pi_i}{\partial \beta_j^2}\frac{\partial \ell_i}{\partial \pi_i} \quad \text{for $j = 0,1$} \\
+\frac{\partial^2 \ell_i}{\partial \beta_j \partial \beta_k} & = \frac{\partial^2 \ell_i}{\partial \pi_i^2}\frac{\partial \pi_i}{\partial \beta_j}\frac{\partial \pi_i}{\partial \beta_k}+\frac{\partial^2 \pi_i}{\partial \beta_j \partial \beta_k}\frac{\partial \ell_i}{\partial \pi_i} \quad \text{for $j,k = 0,1$} \\
+\frac{\partial^2 \ell_i}{\partial \delta_j \partial \beta_k} & = \frac{\partial^2 \ell_i}{\partial \lambda_i \partial \pi_i}\frac{\partial \lambda_i}{\partial \delta_j}\frac{\partial \pi_i}{\partial \beta_k} = \frac{\partial^2 \ell_i}{\partial \beta_k \partial \delta_j} \quad \text{for $j,k = 0,1$} \\
 \end{align*}
-
 \begin{align*}
-\frac{\partial^{2} \ell(\lambda, \pi)}{\partial \beta_{0}^{2}} &= \frac{\partial^{2} \ell(\lambda, \pi)}{\partial \pi^{2}}\frac{\partial^{2}\pi}{\partial \beta_{0}^{2}} \\
-\frac{\partial^{2} \ell(\lambda, \pi)}{\partial \beta_{1}^{2}} &= \frac{\partial^{2} \ell(\lambda, \pi)}{\partial \pi^{2}}\frac{\partial^{2} \pi}{\partial \beta_{1}^{2}} \\
-\frac{\partial^{2} \ell(\lambda, \pi)}{\partial \pi^{2}} &= \bigg[\frac{e^{\lambda} - 1}{e^{\lambda}(\pi - 1) - \pi}\bigg]^{2}I(y_{i} = 0) + \frac{1}{\pi^{2}}I(y_{i > 0})\\
-\frac{\partial^{2} \pi}{\partial \beta_{0}^{2}} &= -e^{-\beta_{1}x_{i} - \beta_{0}} \\
-\frac{\partial^{2} \pi}{\partial \beta_{1}^{2}} &= -x_{i}e^{-\beta_{0} - \beta_{1}x_{i}}
-\end{align*}
+\frac{\partial^2 \ell_i}{\partial \lambda_i^2} & = (1-k_i)\cdot\left\{\frac{\pi_i e^{-\lambda_i}(1-\pi_i + \pi_i e^{-\lambda_i})-(\pi_i e^{-\lambda_i})^2}{(1-\pi_i + \pi_i e^{-\lambda_i})^2}\right\}+ k_i \cdot \frac{-y_i}{\lambda_i^2} \\
+ \frac{\partial^2 \ell_i}{\partial \pi_i^2}  & = (1-k_i) \cdot \frac{-(-1+e^{-\lambda_i})^2}{(1-\pi_i + \pi_i e^{-\lambda_i})^2} + k_i \cdot \frac{-1}{\pi_i^2} \\
+  \frac{\partial^2 \ell_i}{\partial \lambda_i \partial \pi_i} & = (1-k_i) \cdot \frac{-e^{-\lambda_i}(1-\pi_i + \pi_i e^{-\lambda_i}) + \pi_i e^{-\lambda_i}(-1+e^{-\lambda_i})}{(1-\pi_i + \pi_i e^{-\lambda_i})^2}  \\
+  & = (1-k_i)\cdot \frac{-e^{-\lambda_i}}{(1-\pi_i + \pi_i e^{-\lambda_i})^2} \\
+ \frac{\partial^2 \lambda_i}{\partial \delta_0^2} & = e^{\delta_0+\delta_1 x_i} \\
+  \frac{\partial^2 \lambda_i}{\partial \delta_1^2} & = x_i^2e^{\delta_0+\delta_1 x_i} \\
+  \frac{\partial^2 \lambda_i}{\partial \delta_0 \partial \delta_1} & =x_i e^{\delta_0+\delta_1 x_i} \\
+   \frac{\partial^2 \pi_i}{\partial \beta_0^2} & = \frac{(1+e^{\beta_0+\beta_1x_i})^2e^{\beta_0+\beta_1x_i} - 2(e^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
+    & = \frac{e^{\beta_0+\beta_1x_i} (1-e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^3} \\
+   \frac{\partial^2 \pi_i}{\partial \beta_1^2} & = \frac{(1+e^{\beta_0+\beta_1x_i})^2x_i^2e^{\beta_0+\beta_1x_i} - 2(x_ie^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
+   		& = \frac{x_i^2e^{\beta_0+\beta_1x_i}(1-e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^3} \\
+  \frac{\partial^2 \pi_i}{\partial \beta_0 \partial \beta_1} & = \frac{(1+ e^{\beta_0+\beta_1x_i})^2x_i e^{\beta_0+\beta_1x_i} - 2x_i(e^{\beta_0+\beta_1x_i})^2(1+e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^4} \\
+  	& = \frac{x_ie^{\beta_0+\beta_1x_i}(1-e^{\beta_0+\beta_1x_i})}{(1+e^{\beta_0+\beta_1x_i})^3} 
+   \end{align*} 
 
-\subsection{Maximum Likelihood Estimation}
-We will use our newton raphson function to obtain MLEs for the four regression parameters for the first nine stores in the dataset. The MLEs are given in Table \ref{tbl:zip.table}. A corresponding plot of the expectation function, where $E(Y_i) = \pi_i\lambda_i$, is given in Figure \ref{fig:zip.plot}.
+Again, we will use our newton raphson function to obtain MLEs for the four regression parameters for the first nine stores in the dataset. The MLEs are given in Table \ref{tbl:zip.table}. A corresponding plot of the expectation function, where $E(Y_i) = \pi_i\lambda_i$, is given in Figure \ref{fig:zip.plot}.
 
 <<zip.newtraph>>=
 zip.fn <- function(par, y, x) {
@@ -495,7 +500,7 @@ zip.stores <- ldply(stores, function(sto) {
 <<zip.table, results='asis'>>=
 zip.table <- ddply(zip.stores[,1:5], .(Store), unique)
 
-print(xtable(zip.table, digits = c(0, 0, 6, 6, 6, 6), caption = "MLEs for the first nine stores", label = "tbl:zip.table"), table.position = 'H')
+print(xtable(zip.table, digits = c(0, 0, 4, 4, 4, 4), caption = "MLEs for the first nine stores", label = "tbl:zip.table"), table.position = 'H')
 @
 
 <<zip.plot, warning=FALSE, fig.cap='Expectation Function for the ZIP model for the first nine stores'>>=
@@ -504,7 +509,7 @@ df2 <- subset(bean.data, store %in% stores[1:9])
 df3 <- ddply(df2, .(price, store), summarise, actual_mvm = mean(mvm))
 zip.merge <- merge(df1, df3, by.x = c("Price", "Store"), by.y = c("price", "store"))
 
-qplot(Price, PredictedSales, data = zip.merge, geom = "line", facets=~Store, colour = I("blue"), size = I(2)) + geom_bar(aes(x = Price, y = actual_mvm), stat = "identity") + xlim(c(0.3, 0.75))
+qplot(Price, PredictedSales, data = zip.merge, geom = "line", facets=~Store, colour = I("blue"), size = I(1.2)) + geom_bar(aes(x = Price, y = actual_mvm), stat = "identity") + xlim(c(0.3, 0.75))
 @
 
 \subsection{Comparison to pscl}
@@ -522,24 +527,22 @@ zip.pscl.table <- ldply(stores, function(sto) {
 })
 
 my.df <- merge(zip.table, zip.pscl.table, by = "Store")
-
-print(xtable(my.df, digits = c(0, 0, rep(6, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.position = 'H', include.rownames = FALSE)
+my.df<-my.df[c("Store", "b0","b0_pscl", "b1" ,"b1_pscl", "d0" , "d0_pscl",  "d1" ,"d1_pscl")]
+print(xtable(my.df, digits = c(0, 0, rep(4, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.position = 'H', include.rownames = FALSE)
 @
 
 \section{Zero-Inflated Gamma-Poisson}
-We want to develop a model that can take into account the extra variability that could come from the various days on which the covariate occurs. Therefore, we need a model that uses different Poisson distributions for the values of $Y_i$ that share a covariate value on several different days. This idea suggests the use of a Gamma-Poisson distribution. We formulate the model in the following section.
+Next we want to develop a model that can take into account the extra variability that comes from having the same price occur on different days. Therefore, we need a model that uses different Poisson distributions for the values of $Y_i$ that share a covariate value on several different days. This idea suggests the use of a Gamma-Poisson mixture distribution. We formulate the model in the following section.
 
 \subsection{Model Formulation}
-$Y_i|\lambda_i \sim \text{independent Poisson}(\lambda_i)$ \\
-$\lambda_i|\alpha,b_i \sim \text{independent Gamma}(\alpha, b_i)$ \\
-
+We still take $Y_i$ to be independent with Poisson distribution of mean $\lambda_i$, but now we let the $\lambda_i$ values, also independent, have a Gamma($\alpha$, $b_i$) distribution with expected value $\frac{\alpha}{b_i}$. For now, we do not provide interpretation of the $\alpha$ or $b_i$ parameters because we reparameterize the resulting likelihood in terms of the expected value, $\mu_i = \frac{\alpha}{b_i}$. But, note that we do not allow the $\alpha$ parameter to change with the value of the covariate. The pmf for the Poisson-gamma mixture model is given by: 
 \begin{align*}
 h(y_i | \alpha, b_i) &= \int f(y_i | \lambda_i, p)g(\lambda_i | \alpha,b_i)d\lambda_i \\
                        &= \frac{b_i^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i}e^{-\lambda_i}\lambda_i^{\alpha - 1}e^{-b_i\lambda_i}d\lambda_i \\
                        &= \frac{b_i^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i + \alpha - 1}e^{-\lambda_i(b_i + 1)}d\lambda_i \\
                        &= \frac{b_i^{\alpha}\Gamma{(\alpha + y_i)}}{y_i!\Gamma{(\alpha)}(b_i + 1)^{\alpha + y_i}}
 \end{align*}
-
+Now, we zero-inflate our base model by conditioning on the same binary variable, $Z_i$, that we defined in section 4.1. 
 \begin{align*}
 Pr(Y_i = 0 | \lambda_i, p) &= Pr(Y_i = 0 | Z_i = 0)Pr(Z_i = 0) + Pr(Y_i = 0 | Z_i = 1)Pr(Z_i = 1) \\
             &= Pr(Z_i = 0) + Pr(Y_i = 0 | Z_i = 1)Pr(Z_i = 1) \\
@@ -554,17 +557,17 @@ Pr(Y_i = y | \lambda_i, p) &= Pr(Y_i = y | Z_i = 0)Pr(Z_i = 0) + Pr(Y_i = y | Z_
             &= \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{b_i}{b_i + 1})^{\alpha}(\frac{1}{b_i + 1})^{y_i}
 \end{align*}
 
-Hence, the full zero-inflated gamma-poisson distribution pmf is: \\
+Hence, the full zero-inflated gamma-poisson distribution pmf is
+$$h(y_i | \pi_i,\alpha,b_i)=(1 - \pi_i) + \pi_i(\frac{b_i}{b_i + 1})^\alpha I(y_i = 0) + \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{b_i}{b_i + 1})^{\alpha}(\frac{1}{b_i + 1})^{y_i}I(y_i > 0).$$
 
-$(1 - \pi_i) + \pi_i(\frac{b_i}{b_i + 1})^\alpha I(y_i = 0) + \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{b_i}{b_i + 1})^{\alpha}(\frac{1}{b_i + 1})^{y_i}I(y_i > 0)$ \\
+Once again, we will use a log link function for the mean, and a logit link function for the consumer interest parameter $\pi_i$, which we derive as follows:
+\begin{align*}
+log(E(Y_i|x_i)) & = \delta_0 + \delta_1x_i \\
+\mu_i = E(Y_i|_ix) & = e^{\delta_0 + \delta_1x_i} = \frac{\alpha}{b_i} \\
+\pi_i &= \frac{e^{\beta_0 + \beta_1x_i}}{1 + e^{\beta_0 + \beta_1x_i}}
+\end{align*}
 
-Once again, we will use a log link for the mean, and a logit link for the consumer interest parameter $\pi_i$, which we derive as follows:
-
-$log(E(Y|x)) = \delta_0 + \delta_1x_i$ \\
-$\mu_i = E(Y|x) = e^{\delta_0 + \delta_1x_i} = \frac{\alpha}{b_i}$ \\
-$\pi_i = \frac{e^{\beta_0 + \beta_1x_i}}{1 + e^{\beta_0 + \beta_1x_i}}$
-
-Finally, in order to fit the model easily, we will reparameterize this model to include a mean parameter $\mu_i$:
+Finally, in order to fit the model easily, we reparameterize this model in terms of the mean parameter $\mu_i = \frac{\alpha}{b_i}$.  We treat $\alpha$ as a quasi-dispersion parameter in the usual GLM sense, so we assume it is fixed for now, and will estimate later by profiling. The likelihood and log likelihood of our ZIGP model is then
 
 \begin{align*}
 L_i(\pi_i,\alpha, b_i) &= (1 - \pi_i) + \pi_i(\frac{b_i}{b_i + 1})^\alpha I(y_i = 0) + \pi_i{\alpha + y_i - 1 \choose y_i}(\frac{b_i}{b_i + 1})^{\alpha}(\frac{1}{b_i + 1})^{y_i}I(y_i > 0) \\
@@ -695,7 +698,7 @@ par.zigp.newtraph <- as.numeric(zigp.newtraph[1,3:6])
 We can now proceed to find maximum likelihood estimates for the parameters.
 
 \subsection{Maximum Likelihood}
-To fit the model, we will use maximum likelihood estimation to once again estimate the regression parameters $\beta_0, \beta_1, \delta_0$, and $\delta_1$. Now, we also have an $\alpha$ parameter to account for. Our approach this will be to profile out $\alpha$. That is, maximimize $\ell(\beta_0, \beta_1, \delta_0, \delta_1)$ for a range of values of $\alpha$ and select the one that maximizes the log-likelihood. We will again use our Newton-Raphson algorithm to accomplish this.
+To fit the model, we will use maximum likelihood estimation to once again estimate the regression parameters $\beta_0, \beta_1, \delta_0$, and $\delta_1$. Now that also have an $\alpha$ parameter to account for, will profile out $\alpha$. This is to say that, we maximimize $\ell(\beta_0, \beta_1, \delta_0, \delta_1)$ for a range of values of $\alpha$ and select the one that maximizes the log-likelihood. We will again use our Newton-Raphson algorithm to accomplish this.
 
   \subsubsection{First Derivatives}
   \begin{align*}
@@ -741,7 +744,7 @@ Table \ref{tbl:zigp.table} gives the MLEs for the four regression parameters, an
 zigp.table <- data.frame(t(c(par.zigp.newtraph, alpha = zigp.newtraph$alpha)))
 names(zigp.table) <- c("b0", "b1", "d0", "d1", "alpha")
 
-print(xtable(zigp.table, digits = c(0, 6, 6, 6, 6, 3), caption = "MLEs for the model for all stores", label = "tbl:zigp.table"), table.position = 'H')
+print(xtable(zigp.table, digits = c(0, 4, 4, 4, 4, 4), caption = "MLEs for the model for all stores", label = "tbl:zigp.table"), table.position = 'H')
 @
 
 <<zigp.plot, warning=FALSE, fig.cap='Plot of the expectation function of the ZIGP model versus values of price, overlaying the actual data'>>=
@@ -753,12 +756,12 @@ zigp.predict <- data.frame(Price = prices, PredictedSales = (exp(b0 + b1*prices)
 zigp.merge <- merge(zigp.predict, bean.ddply, by.x = "Price", by.y = "price")
 zigp.melt <- melt(zigp.merge, id.vars = c("Price"))
 
-qplot(Price, PredictedSales, data = zigp.merge, geom = "line", size = I(3), colour = I("blue")) +
+qplot(Price, PredictedSales, data = zigp.merge, geom = "line", size = I(1.5), colour = I("blue")) +
     geom_bar(aes(x = Price, y = actual_mvm), stat = "identity", inherit.aes = FALSE)
 @
 
 \subsection{Comparison with pscl}
-The R package pscl includes a function to fit a zero-inflated negative-binomial model, statistically equivalent to a zero-inflated Gamma-Poisson mixture model. In this section, we will fit such a model and compare to the results derived by hand.
+The R package pscl includes a function to fit a zero-inflated negative-binomial model, which equivalent to fitting a zero-inflated Gamma-Poisson mixture model. We fit such a model using pscl and compared to the results derived by hand.
 
 <<zigp.pscl, results='asis'>>=
 pscl.zigp <- zeroinfl(mvm ~ price, data = bean.data, dist = "negbin")
@@ -769,8 +772,9 @@ names(pscl.par.zigp) <- c("b0_pscl", "b1_pscl", "d0_pscl", "d1_pscl")
 
 names(par.zigp.newtraph) <- c("b0", "b1", "d0", "d1")
 my.df <- data.frame(t(c(par.zigp.newtraph, pscl.par.zigp)))
+my.df<-my.df[c("b0","b0_pscl","b1", "b1_pscl","d0", "d0_pscl", "d1","d1_pscl")]
 
-print(xtable(my.df, digits = c(0, rep(6, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zigp.compare"), table.position = 'H')
+print(xtable(my.df, digits = c(0, rep(4, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zigp.compare"), table.position = 'H')
 @
 
 \section{Model Assessment}
@@ -789,8 +793,8 @@ comparison.results <- ldply(seq(0, 1, by = 0.01), function(pr) {
 })
 comparison.melt <- melt(comparison.results, id.vars = "price")
 
-qplot(price, value, data = comparison.melt, group = variable, colour = variable, geom = "line", size = I(3))
-qplot(price, value, data = subset(comparison.melt, price > 0.3 & price < 0.7), group = variable, colour = variable, geom = "line", size = I(3))
+qplot(price, value, data = comparison.melt, group = variable, colour = variable, geom = "line",linetype= variable, size = I(1.5))
+qplot(price, value, data = subset(comparison.melt, price > 0.3 & price < 0.7), group = variable, colour = variable, geom = "line", linetype= variable,size = I(1.5))
 @
 
 Let's compare the three models discussed in terms of expected daily sales at fixed price levels, compared to what was actually observed in the data.
@@ -824,8 +828,162 @@ chi.table <- ldply(sort(unique(bean.data$price)), function(pr) {
     c(price = pr, sip.chi = ch1, zip.chi = ch2, zigp.chi = ch3, best = best)
 })
 
-xtable(chi.table, display = c("d", "f", "E", "E", "E", "s"), digits = c(0, 2, 4, 4, 4, 0))
+xtable(chi.table, display = c("d", "f", "E", "E", "E", "s"), digits = c(0,2, 4, 4, 4, 0))
 @
+
+\section{Bayesian Estimation of ZIP Model}
+We now consider the ZIP model within a Bayesian framework.  The model we consider is a straightforward Bayesian model for one store with noninformative priors on the model parameters.
+\subsection{Prior Distributions}
+  \begin{align*}
+  Y_i & \sim \text{Poisson}(z_i\cdot \lambda_i ) \\
+  Z_i & \sim \text{Bernoulli}(p_i) \\
+  \log(\lambda_i) & = \beta_0 + \beta_1 x_i \\
+  \log\left(\frac{p_i}{1-p_i}\right) & = \delta_0 + \delta_1 x_i \\
+  (\beta_0, \beta_1)^T \equiv \underaccent{\tilde}{\beta} & \sim MVN\left(\binom{0}{0}, \Sigma_\beta \right) \\
+  (\delta_0, \delta_1)^T \equiv \underaccent{\tilde}{\delta} & \sim MVN\left(\binom{0}{0}, \Sigma_\delta \right)
+  \end{align*}
+  where $\Sigma_\beta = \Sigma_\delta = \begin{bmatrix} 100 & 0 \\ 0 & 100 \end{bmatrix}$, so we assume that $\beta_0,\beta_1$ are independent and $\delta_0,\delta_1$ are independent.  We also assume that $\underaccent{\tilde}{\beta}$ and $\underaccent{\tilde}{\delta}$ are independent.  The priors of $ \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}$ are given by
+  \begin{align*}
+  \pi( \underaccent{\tilde}{\beta}) & = \frac{1}{2\pi}|\Sigma_\beta|^{-\frac{1}{2}} \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \\
+   \pi( \underaccent{\tilde}{\delta}) & = \frac{1}{2\pi}|\Sigma_\delta|^{-\frac{1}{2}} \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
+  \end{align*}
+   The joint distribution of the data is 
+  $$f(\underaccent{\tilde}{y}| \underaccent{\tilde}{x}, \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}) = \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\}.$$ 
+  \subsection{Posterior Distribution}
+  The joint posterior distribution is 
+  \begin{align*}
+   p(\underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}|\underaccent{\tilde}{y}, \underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}| \underaccent{\tilde}{x}, \underaccent{\tilde}{\beta},\underaccent{\tilde}{\delta}) \pi(\underaccent{\tilde}{\beta}) \pi(\underaccent{\tilde}{\delta}) \\
+     & \propto \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \\
+	& \times \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \times  \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
+  \end{align*}
+  \subsection{Sampling}
+  We cannot sample from this distribution directly, so we use Metropolis-Hastings within Gibbs to generate samples from the joint distribution by iteratively sampling from the full conditional distributions of $\underaccent{\tilde}{\beta}$ and $\underaccent{\tilde}{\delta}$. These full conditional distributions are given by
+  \begin{align*}
+  p(\underaccent{\tilde}{\beta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\delta}) &\propto  \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \\
+   p(\underaccent{\tilde}{\delta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\beta}) &\propto \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times  \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
+  \end{align*}
+  The code for our MCMC sampler below.
+<<metro.in.gibbs,eval=FALSE>>=
+#define parameter functions
+lambda<-function(beta,x){
+  exp(beta[1]+ beta[2]*x)
+}  
+p<-function(delta,x){
+  exp(delta[1]+delta[2]*x)/(1+exp(delta[1]+delta[2]*x))
+}
+#loglikelihood
+lhood<-function(y,x,beta,delta){
+  lambda1<-lambda(beta,x)
+  p1<-p(delta,x)
+  one_obs<-log(( 1 - p1 + p1 * exp(-lambda1))) * (y==0) + (lgamma(y+1) + log(p1) - lambda1 +y*log(lambda1))*(y>0) 
+  return(sum(one_obs))
+}
+#priors
+prior.beta<-function(beta,Sigma.b,beta0=c(0,0)){
+  log(det(Sigma.b)^(-1/2)*exp((-1/2)*t(beta-beta0)%*%solve(Sigma.b)%*%(beta-beta0)))
+}
+prior.delta<-function(delta,Sigma.d,delta0=c(0,0)){
+  log(det(Sigma.d)^(-1/2)*exp((-1/2)*t(delta-delta0)%*%solve(Sigma.d)%*%(delta-delta0)))
+}
+#Metropolis Hastings steps for beta, delta
+sample_beta <- function(y,x,betaj_1,sigma.b,Sigma.b,deltaj_1){
+  beta_star<-c(0,0)
+  beta_star[1] <- rnorm(1, betaj_1[1], sigma.b)
+  beta_star[2] <- rnorm(1, betaj_1[2], sigma.b)
+  
+  f_bstar<-lhood(y,x,beta_star,deltaj_1)+prior.beta(beta_star,Sigma.b)
+  f_b<-lhood(y,x,betaj_1,deltaj_1)+prior.beta(betaj_1,Sigma.b)
+  
+  varmat<-matrix(c(sigma.b,0,0,sigma.b),nrow=2)
+  
+  q_bstar<-log(det(varmat)^(-1/2)*exp((-1/2)*t(beta_star-betaj_1)%*%solve(varmat)%*%(beta_star-betaj_1)))
+  q_b<-log(det(varmat)^(-1/2)*exp((-1/2)*t(betaj_1-beta_star)%*%solve(varmat)%*%(betaj_1-beta_star)))
+  
+  log_rho_b<-min((f_bstar - f_b) + (q_b - q_bstar) , 0)
+  
+  if (log(runif(1)) <= log_rho_b){
+    acc.new = 1
+  }
+   else acc.new = 0
+  
+  if (acc.new == 1){
+    return(beta_star)
+  }
+  else return(betaj_1)
+}
+
+sample_delta <- function(y,x,deltaj_1, sigma.d=1,Sigma.d,beta_j){
+  delta_star<-c(0,0)
+  delta_star[1] <- rnorm(1, deltaj_1[1], sigma.d)
+  delta_star[2] <- rnorm(1, deltaj_1[2], sigma.d)
+  f_dstar<-lhood(y,x,beta_j,delta_star)+prior.delta(delta_star,Sigma.d)
+  f_d<-lhood(y,x,beta_j,deltaj_1)+prior.delta(deltaj_1,Sigma.d)
+  
+  varmat.d<-matrix(c(sigma.d,0,0,sigma.d),nrow=2)
+  
+  q_dstar<-log(det(varmat.d)^(-1/2)*exp((-1/2)*t(delta_star-deltaj_1)%*%solve(varmat.d)%*%(delta_star-deltaj_1)))
+  q_d<-log(det(varmat.d)^(-1/2)*exp((-1/2)*t(deltaj_1-delta_star)%*%solve(varmat.d)%*%(deltaj_1-delta_star)))
+  
+  log_rho_d<-min((f_dstar - f_d) + (q_d - q_dstar),0) 
+  
+ if (log(runif(1)) <= log_rho_d){
+    acc.new.d = 1
+  }
+  else acc.new.d = 0
+  
+  if (acc.new.d == 1){
+    return(delta_star)
+  }
+  else return(deltaj_1)
+}
+#Final Metropolis-within-Gibbs MCMC sampler to draw samples from the joint posterior distribution
+run_mcmc = function(y, x, beta0, delta0, n.reps=1e3, tune=TRUE, sigma.b=10,sigma.d=10,Sigma=matrix(c(100,0,0,100),nrow=2)) {
+  beta_keep = matrix(0,ncol=2,nrow=n.reps); beta_keep[1,] = beta = beta0
+  delta_keep =  matrix(0,ncol=2,nrow=n.reps); delta_keep[1,] = delta = delta0
+  
+  for (i in 1:n.reps) {
+    # Automatically tune beta var
+    beta_old <- beta
+    beta <- sample_beta(y,x,beta_old,sigma.b,Sigma,delta) #Metropolis step
+    if (tune==TRUE) {
+       if (sum(beta==beta_old)==2) {  #if next draw is rejected then make var smaller  (accept prob too low)
+         sigma.b = sigma.b/1.1 
+       } else {
+         sigma.b = sigma.b*1.1  #increase var to get more of the density sampled  (accept prob too high)
+       }
+     }
+    # Automatically tune delta var
+    delta_old <- delta
+    delta <- sample_delta(y,x,delta,sigma.d,Sigma,beta) #Metropolis step
+    #delta <- sample_delta_u(y,x,delta,sigma.d,beta) #Metropolis step new prior
+    if (tune==TRUE) {
+      if (sum(delta==delta_old)==2) {  #if next draw is rejected then make var smaller  (accept prob too low)
+        sigma.d = sigma.d/1.1 
+      } else {
+        sigma.d = sigma.d*1.1  #increase var to get more of the density sampled  (accept prob too high)
+      }
+    }
+    
+    beta_keep[i,]  = beta
+    delta_keep[i,]   = delta
+    }
+  return(list(beta=beta_keep,delta=delta_keep,sigma.b,sigma.d))  
+}
+@
+We used this sampler to estimate the parameter values for the first 9 stores, the same stores that we estimated the parameters of in sections 3 and 4. The posterior means and medians for these stores are listed in Table \ref{tbl:Bayes.ests}
+<<ests.bayes,echo=FALSE,cache=TRUE,results='asis'>>=
+mcmc_allstores<-read.table('mcmc_allstores.txt',header=T)
+
+bayes_ests<-group_by(mcmc_allstores,store)%.%
+  summarise(mean_d0 = mean(delta0), med_d0 = median(median(delta0)),
+            mean_d1 = mean(delta1), med_d1 = median(median(delta1)),
+            mean_b0 = mean(beta0), med_b0 = median(median(beta0)),
+            mean_b1 = mean(beta1), med_b1 = median(median(beta1)))
+print(xtable(bayes_ests, digits = c(0, 0, rep(4,8)), caption = "Posterior Means and Medians of the Parameters for the first 9 stores", label = "tbl:Bayes.ests"), table.position = 'H',, include.rownames = FALSE)
+@
+
+
+
 
 \clearpage
 

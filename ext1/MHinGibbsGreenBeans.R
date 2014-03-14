@@ -157,6 +157,7 @@ mcmc_store1$delta1<-c(chain1[[1]][,2],chain2[[1]][,2],chain3[[1]][,2])
 mcmc_store1$beta0<-c(chain1[[2]][,1],chain2[[2]][,1],chain3[[2]][,1])
 mcmc_store1$beta1<-c(chain1[[2]][,2],chain2[[2]][,2],chain3[[2]][,2])
 mcmc_store1<-data.frame(mcmc_store1)
+mcmc_store1$store<-1009
 saveRDS(mcmc_store1,"Store1Samples.RDS")
 
 mcmc_store1<-readRDS("Store1Samples.RDS")
@@ -181,6 +182,7 @@ mcmc_store2$delta1<-c(c1_store2[[1]][,2],c2_store2[[1]][,2],c3_store2[[1]][,2])
 mcmc_store2$beta0<-c(c1_store2[[2]][,1],c2_store2[[2]][,1],c3_store2[[2]][,1])
 mcmc_store2$beta1<-c(c1_store2[[2]][,2],c2_store2[[2]][,2],c3_store2[[2]][,2])
 mcmc_store2<-data.frame(mcmc_store2)
+mcmc_store2$store<-1010
 saveRDS(mcmc_store2,"store2Samples.RDS")
 
 mcmc_store2<-readRDS("store2Samples.RDS")
@@ -205,6 +207,7 @@ mcmc_store3$delta1<-c(c1_store3[[1]][,2],c2_store3[[1]][,2],c3_store3[[1]][,2])
 mcmc_store3$beta0<-c(c1_store3[[2]][,1],c2_store3[[2]][,1],c3_store3[[2]][,1])
 mcmc_store3$beta1<-c(c1_store3[[2]][,2],c2_store3[[2]][,2],c3_store3[[2]][,2])
 mcmc_store3<-data.frame(mcmc_store3)
+mcmc_store3$store<-1011
 saveRDS(mcmc_store3,"store3Samples.RDS")
 
 mcmc_store3<-readRDS("store3Samples.RDS")
@@ -229,6 +232,7 @@ mcmc_store4$delta1<-c(c1_store4[[1]][,2],c2_store4[[1]][,2],c3_store4[[1]][,2])
 mcmc_store4$beta0<-c(c1_store4[[2]][,1],c2_store4[[2]][,1],c3_store4[[2]][,1])
 mcmc_store4$beta1<-c(c1_store4[[2]][,2],c2_store4[[2]][,2],c3_store4[[2]][,2])
 mcmc_store4<-data.frame(mcmc_store4)
+mcmc_store4$store<-1013
 saveRDS(mcmc_store4,"store4Samples.RDS")
 
 mcmc_store4<-readRDS("store4Samples.RDS")
@@ -254,6 +258,7 @@ mcmc_store5$delta1<-c(c1_store5[[1]][,2],c2_store5[[1]][,2],c3_store5[[1]][,2])
 mcmc_store5$beta0<-c(c1_store5[[2]][,1],c2_store5[[2]][,1],c3_store5[[2]][,1])
 mcmc_store5$beta1<-c(c1_store5[[2]][,2],c2_store5[[2]][,2],c3_store5[[2]][,2])
 mcmc_store5<-data.frame(mcmc_store5)
+mcmc_store5$store<-1018
 saveRDS(mcmc_store5,"store5Samples.RDS")
 
 mcmc_store5<-readRDS("store5Samples.RDS")
@@ -278,6 +283,7 @@ mcmc_store6$delta1<-c(c1_store6[[1]][,2],c2_store6[[1]][,2],c3_store6[[1]][,2])
 mcmc_store6$beta0<-c(c1_store6[[2]][,1],c2_store6[[2]][,1],c3_store6[[2]][,1])
 mcmc_store6$beta1<-c(c1_store6[[2]][,2],c2_store6[[2]][,2],c3_store6[[2]][,2])
 mcmc_store6<-data.frame(mcmc_store6)
+mcmc_store6$store<-1019
 saveRDS(mcmc_store6,"store6Samples.RDS")
 
 mcmc_store6<-readRDS("store6Samples.RDS")
@@ -302,6 +308,7 @@ mcmc_store7$delta1<-c(c1_store7[[1]][,2],c2_store7[[1]][,2],c3_store7[[1]][,2])
 mcmc_store7$beta0<-c(c1_store7[[2]][,1],c2_store7[[2]][,1],c3_store7[[2]][,1])
 mcmc_store7$beta1<-c(c1_store7[[2]][,2],c2_store7[[2]][,2],c3_store7[[2]][,2])
 mcmc_store7<-data.frame(mcmc_store7)
+mcmc_store7$store<-1022
 saveRDS(mcmc_store7,"store7Samples.RDS")
 
 mcmc_store7<-readRDS("store7Samples.RDS")
@@ -326,6 +333,7 @@ mcmc_store8$delta1<-c(c1_store8[[1]][,2],c2_store8[[1]][,2],c3_store8[[1]][,2])
 mcmc_store8$beta0<-c(c1_store8[[2]][,1],c2_store8[[2]][,1],c3_store8[[2]][,1])
 mcmc_store8$beta1<-c(c1_store8[[2]][,2],c2_store8[[2]][,2],c3_store8[[2]][,2])
 mcmc_store8<-data.frame(mcmc_store8)
+mcmc_store8$store<-1026
 saveRDS(mcmc_store8,"store8Samples.RDS")
 
 mcmc_store8<-readRDS("store8Samples.RDS")
@@ -350,6 +358,7 @@ mcmc_store9$delta1<-c(c1_store9[[1]][,2],c2_store9[[1]][,2],c3_store9[[1]][,2])
 mcmc_store9$beta0<-c(c1_store9[[2]][,1],c2_store9[[2]][,1],c3_store9[[2]][,1])
 mcmc_store9$beta1<-c(c1_store9[[2]][,2],c2_store9[[2]][,2],c3_store9[[2]][,2])
 mcmc_store9<-data.frame(mcmc_store9)
+mcmc_store9$store<-1027
 saveRDS(mcmc_store9,"store9Samples.RDS")
 
 mcmc_store9<-readRDS("store9Samples.RDS")
@@ -358,5 +367,6 @@ qplot(beta1,geom='histogram',binwidth=.1,data=mcmc_store9,main='Store 9, beta_1'
 qplot(delta0,geom='histogram',binwidth=.01,data=mcmc_store9,main='Store 9, delta_0')+geom_vline(xintercept=mean(mcmc_store9$delta0),color='red')
 qplot(delta1,geom='histogram',binwidth=.01,data=mcmc_store9,main='Store 9, delta_1')+geom_vline(xintercept=mean(mcmc_store9$delta1),color='red')
 
-median(mcmc_store6$delta0)
+mcmc_allstores<-rbind(mcmc_store1,mcmc_store2,mcmc_store3,mcmc_store4,mcmc_store5,mcmc_store6,mcmc_store7,mcmc_store8,mcmc_store9)
 
+write.table(mcmc_allstores,file='mcmc_allstores.txt')
