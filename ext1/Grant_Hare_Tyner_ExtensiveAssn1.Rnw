@@ -872,8 +872,8 @@ We now consider the ZIP model within a Bayesian framework.  The model we conside
   p(\underaccent{\tilde}{\beta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\delta}) &\propto  \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\beta}^T \Sigma_\beta^{-1} \underaccent{\tilde}{\beta}\right\} \\
    p(\underaccent{\tilde}{\delta}|\underaccent{\tilde}{y},\underaccent{\tilde}{x},\underaccent{\tilde}{\beta}) &\propto \prod_{i=1}^n\left\{ \left[(1-p_i) + p_i e^{-\lambda_i}\right]\cdot \mathbb{I}(y_i = 0) + \left[\frac{p_i}{y_i!}e^{-\lambda_i}\lambda_i^{y_i}\right]\cdot \mathbb{I}(y_i > 0)\right\} \times  \exp\left\{ -\frac{1}{2}  \underaccent{\tilde}{\delta}^T \Sigma_\delta^{-1} \underaccent{\tilde}{\delta}\right\}
   \end{align*}
-  The code for our MCMC sampler below.
-<<metro.in.gibbs,eval=FALSE>>=
+  The code for our MCMC sampler is below.
+<<metro.in.gibbs,eval=FALSE,echo=TRUE>>=
 #define parameter functions
 lambda<-function(beta,x){
   exp(beta[1]+ beta[2]*x)
@@ -980,22 +980,52 @@ run_mcmc = function(y, x, beta0, delta0, n.reps=1e3, tune=TRUE, sigma.b=10,sigma
   return(list(beta=beta_keep,delta=delta_keep,sigma.b,sigma.d))  
 }
 @
-We used this sampler to estimate the parameter values for the first 9 stores, the same stores that we estimated the parameters of in sections 3 and 4. The posterior means and medians for these stores are listed in Table \ref{tbl:Bayes.ests}
-<<ests.bayes,echo=FALSE,cache=TRUE,results='asis'>>=
+We used this sampler to estimate the parameter values for the first 9 stores, the same stores that we estimated the parameters of in sections 3 and 4. For each store, 3 chains were started at different points in the parameter space with 1,000 draws used for burn-in, and 10,000 draws used for inference. As an example, the code run for estimating the parameter values for the first store is given in the code appendix. The posterior distributions of all parameters are shown in Figure \ref{fig:bayes_plot}, and the posterior means and medians for these stores are listed in Table \ref{tbl:Bayes.ests}. 
+<<sampler.example,echo=FALSE,eval=FALSE>>=
+store1<-subset(beans,store==1009)
+#burnin
+burnin1 = run_mcmc(y=store1$mvm,x=store1$price,beta0=c(1,-1), delta0=c(1,-1),sigma.b=2,sigma.d=2,Sigma=matrix(c(100,0,0,100),nrow=2),tune=T)  
+burnin2 = run_mcmc(y=store1$mvm,x=store1$price,beta0=c(5,-5), delta0=c(5,-5),sigma.b=2,sigma.d=2,Sigma=matrix(c(100,0,0,100),nrow=2),tune=T)
+burnin3 = run_mcmc(y=store1$mvm,x=store1$price,beta0=c(0,0), delta0=c(0,0),sigma.b=2,sigma.d=2,Sigma=matrix(c(100,0,0,100),nrow=2),tune=T)
+#inference
+chain1 <- run_mcmc(y=store1$mvm,x=store1$price,beta0=burnin1[[1]][1e3,], delta0=burnin1[[2]][1e3,],sigma.b=burnin1[[3]],sigma.d=burnin1[[4]],n.reps=1e4,tune=FALSE)
+chain2 <- run_mcmc(y=store1$mvm,x=store1$price,beta0=burnin2[[1]][1e3,], delta0=burnin2[[2]][1e3,],sigma.b=burnin2[[3]],sigma.d=burnin2[[4]],n.reps=1e4,tune=FALSE)
+chain3 <- run_mcmc(y=store1$mvm,x=store1$price,beta0=burnin3[[1]][1e3,], delta0=burnin3[[2]][1e3,],sigma.b=burnin3[[3]],sigma.d=burnin3[[4]],n.reps=1e4,tune=FALSE)
+@
+<<bayes_plot,echo=FALSE,warning=FALSE,fig.cap="Posterior Distributions for all 4 parameters at each of the first 9 stores in the data set">>=
 mcmc_allstores<-read.table('mcmc_allstores.txt',header=T)
-
-bayes_ests<-group_by(mcmc_allstores,store)%.%
+names(mcmc_allstores)<-c("delta0","delta1","beta0","beta1","Store")
+library(gridExtra)
+p1<-qplot(delta0,geom='histogram',binwidth=.01,data=mcmc_allstores,main='delta0')+facet_wrap(~Store)+theme(text = element_text(size=10))
+p2<-qplot(delta1,geom='histogram',binwidth=.05,data=mcmc_allstores,main='delta1')+facet_wrap(~Store)+theme(text = element_text(size=10))
+p3<-qplot(beta0,geom='histogram',binwidth=.1,data=mcmc_allstores,main='beta0')+facet_wrap(~Store)+theme(text = element_text(size=10))
+p4<-qplot(beta1,geom='histogram',binwidth=.25,data=mcmc_allstores,main='beta1')+facet_wrap(~Store)+theme(text = element_text(size=10))
+grid.arrange(p1,p2,p3,p4,ncol=2)
+@
+<<ests.bayes,echo=FALSE,cache=TRUE,results='asis'>>=
+bayes_ests<-group_by(mcmc_allstores,Store)%.%
   summarise(mean_d0 = mean(delta0), med_d0 = median(median(delta0)),
             mean_d1 = mean(delta1), med_d1 = median(median(delta1)),
             mean_b0 = mean(beta0), med_b0 = median(median(beta0)),
             mean_b1 = mean(beta1), med_b1 = median(median(beta1)))
 print(xtable(bayes_ests, digits = c(0, 0, rep(4,8)), caption = "Posterior Means and Medians of the Parameters for the first 9 stores", label = "tbl:Bayes.ests"), table.placement = 'H', include.rownames = FALSE)
 @
+\subsection{Comparison to MLEs}
+The Bayesian estimates for the parameters in the ZIP model are listed side-by-side with our MLEs for the ZIP model in Table \ref{tbl:bayes.mles.delt} and Table \ref{tbl:bayes.mles.bet}. 
+<<bayes_mles,echo=FALSE,results='asis'>>=
+names(zip.table)<-c("Store","b0_mle","b1_mle","d0_mle","d1_mle")
+my.df<-merge(zip.table,bayes_ests,by='Store')
+my.df<-my.df[c("Store"  , "mean_d0",  "med_d0" , "d0_mle", "mean_d1", "med_d1", "d1_mle", 
+"mean_b0" ,"med_b0" , "b0_mle" ,"mean_b1", "med_b1", "b1_mle")]
+print(xtable(my.df[,1:7], digits = c(0, 0, rep(4,6)), caption = "Comparison of Bayesian estimates of delta0 and delta1 to our MLEs", label = "tbl:bayes.mles.delt"), table.placement = 'H', include.rownames = FALSE)
+print(xtable(my.df[,c(1,8:13)], digits = c(0, 0, rep(4,6)), caption = "Comparison of Bayesian estimates of beta0 and beta1 to our MLEs", label = "tbl:bayes.mles.bet"), table.placement = 'H', include.rownames = FALSE)
+@
+The Bayesian estimates of $\delta_0$ and $\delta_1$ are nearly identical to the MLEs; most of the posterior medians differ from the MLEs by less than 0.01. The Bayesan estimates of $\beta_0$ and $\beta_1$, however, are similar, but don't match the MLEs quite as closely.  Looking at the posterior distributions, we see that the distributions of the $\beta$s have much more variation than the distributions of the $\delta$s, which helps to explain why the $\beta$ Bayesian estimates don't match their respective MLEs as closely. Using more iterations for burnin and also for inference would help better estimate the posterior distributions of $\beta_0$ and $\beta_1$.   
 
 \section{Conclusion}
-In spite of the significant variation in sales across different stores, the ZIGP model appears to do a relatively good job of describing features in the data. The larger expected sales for high values of price, and larger tail probabilities in the actual ZIGP distribution better capture what the data itself tells us. Note that there is a significant limitations of this analysis, including the fact that we are treating daily sales as independent when some kind of covariance structure would likely be much more appropriate.
+In spite of the significant variation in sales across different stores, the ZIGP model appears to do a relatively good job of describing features in the data. The larger expected sales for high values of price, and larger tail probabilities in the actual ZIGP distribution better capture what the data itself tells us. Note that there is a significant limitations of this analysis, including the fact that we are treating daily sales as independent when some kind of covariance structure over time would likely be much more appropriate.
 
-(Something about Bayes stuff...)
+Furthermore, the Bayesian estimation of the ZIP model for individual stores showed us that if we do not have the time or the patience to derive all of the gradient and hessians for a future ZIP model, we can obtain parameter estimates through a Metropolis-within-Gibbs MCMC sampler that are just as accurate as the MLEs without the calculus headache.  The Bayesian model also has the advantage of being expandable by adding a hierarchical structure, so that new stores can be added and grouped by region or some other grouping variable, and the parameters for the whole can be estimated just as easily as the parameters for an individual store.  
 
 \clearpage
 
