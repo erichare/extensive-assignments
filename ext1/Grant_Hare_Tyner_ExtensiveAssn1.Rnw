@@ -251,7 +251,7 @@ sip.stores <- ldply(stores, function(sto) {
 <<sip.table, results='asis'>>=
 sip.table <- ddply(sip.stores[,1:3], .(Store), unique)
 
-print(xtable(sip.table, digits = c(0, 0, 4, 4), caption = "MLEs for the first nine stores", label = "tbl:sip.table"), table.position = 'H', include.rownames = FALSE)
+print(xtable(sip.table, digits = c(0, 0, 4, 4), caption = "MLEs for the first nine stores", label = "tbl:sip.table"), table.placement = 'H', include.rownames = FALSE)
 @
 
 <<sip.plot, warning=FALSE, fig.cap='Expectation function for the Simple Poisson model for the first 9 stores.'>>=
@@ -279,7 +279,7 @@ sip.glm.table <- ldply(stores, function(sto) {
 my.df <- merge(sip.table, sip.glm.table, by = "Store")
 my.df<-my.df[c('Store','d0','d0_glm','d1','d1_glm')]
 
-print(xtable(my.df, digits = c(0, 0, rep(4, 4)), caption = "Comparison of MLEs to results obtained from glm package", label = "tbl:sip.compare"), table.position = 'H', include.rownames = FALSE)
+print(xtable(my.df, digits = c(0, 0, rep(4, 4)), caption = "Comparison of MLEs to results obtained from glm package", label = "tbl:sip.compare"), table.placement = 'H', include.rownames = FALSE)
 @
 
 \section{Zero-Inflated Poisson}
@@ -500,7 +500,7 @@ zip.stores <- ldply(stores, function(sto) {
 <<zip.table, results='asis'>>=
 zip.table <- ddply(zip.stores[,1:5], .(Store), unique)
 
-print(xtable(zip.table, digits = c(0, 0, 4, 4, 4, 4), caption = "MLEs for the first nine stores", label = "tbl:zip.table"), table.position = 'H')
+print(xtable(zip.table, digits = c(0, 0, 4, 4, 4, 4), caption = "MLEs for the first nine stores", label = "tbl:zip.table"), table.placement = 'H')
 @
 
 <<zip.plot, warning=FALSE, fig.cap='Expectation Function for the ZIP model for the first nine stores'>>=
@@ -528,14 +528,14 @@ zip.pscl.table <- ldply(stores, function(sto) {
 
 my.df <- merge(zip.table, zip.pscl.table, by = "Store")
 my.df<-my.df[c("Store", "b0","b0_pscl", "b1" ,"b1_pscl", "d0" , "d0_pscl",  "d1" ,"d1_pscl")]
-print(xtable(my.df, digits = c(0, 0, rep(4, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.position = 'H', include.rownames = FALSE)
+print(xtable(my.df, digits = c(0, 0, rep(4, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zip.compare"), table.placement = 'H', include.rownames = FALSE)
 @
 
 \section{Zero-Inflated Gamma-Poisson}
-Next we want to develop a model that can take into account the extra variability that comes from having the same price occur on different days. Therefore, we need a model that uses different Poisson distributions for the values of $Y_i$ that share a covariate value on several different days. This idea suggests the use of a Gamma-Poisson mixture distribution. We formulate the model in the following section.
+Next we want to develop a model that can take into account the extra variability that comes from having the same price occur on different days. Therefore, we need a model that uses different Poisson distributions for the values of $Y_i$ that share a covariate value on several different days. This idea suggests the use of a Gamma-Poisson mixture distribution, and this will be the model we attempt to fit to all the stores. We formulate the model in the following section.
 
 \subsection{Model Formulation}
-We still take $Y_i$ to be independent with Poisson distribution of mean $\lambda_i$, but now we let the $\lambda_i$ values, also independent, have a Gamma($\alpha$, $b_i$) distribution with expected value $\frac{\alpha}{b_i}$. For now, we do not provide interpretation of the $\alpha$ or $b_i$ parameters because we reparameterize the resulting likelihood in terms of the expected value, $\mu_i = \frac{\alpha}{b_i}$. But, note that we do not allow the $\alpha$ parameter to change with the value of the covariate. The pmf for the Poisson-gamma mixture model is given by: 
+We still take $Y_i$ to be independent with Poisson distribution of mean $\lambda_i$, but now we let the $\lambda_i$ values, also independent, have a Gamma($\alpha$, $b_i$) distribution with expected value $\frac{\alpha}{b_i}$. For now, we do not provide interpretation of the $\alpha$ or $b_i$ parameters because we reparameterize the resulting likelihood in terms of the expected value, $\mu_i = \frac{\alpha}{b_i}$. But, note that we do not allow the $\alpha$ parameter to change with the value of the covariate. Also note that i is now indexing a single daily observation, i.e., i runs from 1 to the total number of daily sales records in the dataset (An alternative parameterization would take $Y_ij$ with i indexing stores and j indexing days, but this is statistically equivalent for this analysis). The pmf for the Poisson-gamma mixture model is given by: 
 \begin{align*}
 h(y_i | \alpha, b_i) &= \int f(y_i | \lambda_i, p)g(\lambda_i | \alpha,b_i)d\lambda_i \\
                        &= \frac{b_i^{\alpha}}{y_i!\Gamma{(\alpha)}}\int_0^{\infty} \lambda_i^{y_i}e^{-\lambda_i}\lambda_i^{\alpha - 1}e^{-b_i\lambda_i}d\lambda_i \\
@@ -744,7 +744,7 @@ Table \ref{tbl:zigp.table} gives the MLEs for the four regression parameters, an
 zigp.table <- data.frame(t(c(par.zigp.newtraph, alpha = zigp.newtraph$alpha)))
 names(zigp.table) <- c("b0", "b1", "d0", "d1", "alpha")
 
-print(xtable(zigp.table, digits = c(0, 4, 4, 4, 4, 4), caption = "MLEs for the model for all stores", label = "tbl:zigp.table"), table.position = 'H')
+print(xtable(zigp.table, digits = c(0, 4, 4, 4, 4, 4), caption = "MLEs for the model for all stores", label = "tbl:zigp.table"), table.placement = 'H')
 @
 
 <<zigp.plot, warning=FALSE, fig.cap='Plot of the expectation function of the ZIGP model versus values of price, overlaying the actual data'>>=
@@ -774,11 +774,14 @@ names(par.zigp.newtraph) <- c("b0", "b1", "d0", "d1")
 my.df <- data.frame(t(c(par.zigp.newtraph, pscl.par.zigp)))
 my.df<-my.df[c("b0","b0_pscl","b1", "b1_pscl","d0", "d0_pscl", "d1","d1_pscl")]
 
-print(xtable(my.df, digits = c(0, rep(4, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zigp.compare"), table.position = 'H')
+print(xtable(my.df, digits = c(0, rep(4, 8)), caption = "Comparison of MLEs to results obtained from pscl package", label = "tbl:zigp.compare"), table.placement = 'H')
 @
 
 \section{Model Assessment}
-<<compare, cache=TRUE>>=
+To assess the models, we will use two approaches: First, we'll display plots of the expectation function for the three models discussed fit to all of the stores. We will then present the results of a chi-square test statistic for different fixed values of price, and use this to indicate the quality of the fit.
+
+Figure \ref{fig:compare} displays the expectation function for the three models across values of price ranging from 0 to 1. It is clear that the zero-inflated nature of the ZIP and ZIGP models acts to depress the sales a bit relative to the simple poisson model. However, in Figure \ref{fig:compare2}, which focuses the plot in on the bulk of the data (prices between 0.3 and 0.7), it can be seen that the ZIGP model has a longer tail, i.e., more expected sales in the high values of price.
+<<compare, cache=TRUE, fig.cap='Expectation functions for the three full fitted models'>>=
 zip.newtraph.full <- newton.raphson(zip.loglik, zip.gradient, zip.hessian, start = c(1, 1, 1, 1), y = bean.data$mvm, x = bean.data$price)
 sip.newtraph.full <- newton.raphson(sip.loglik, sip.gradient, sip.hessian, start = c(1, 1), y = bean.data$mvm, x = bean.data$price)
 
@@ -794,21 +797,24 @@ comparison.results <- ldply(seq(0, 1, by = 0.01), function(pr) {
 comparison.melt <- melt(comparison.results, id.vars = "price")
 
 qplot(price, value, data = comparison.melt, group = variable, colour = variable, geom = "line",linetype= variable, size = I(1.5))
+@
+
+<<compare2, cache=TRUE, fig.cap='Expectation functions for the three full fitted models, focused in on the price range 0.3 to 0.7'>>=
 qplot(price, value, data = subset(comparison.melt, price > 0.3 & price < 0.7), group = variable, colour = variable, geom = "line", linetype= variable,size = I(1.5))
 @
 
-Let's compare the three models discussed in terms of expected daily sales at fixed price levels, compared to what was actually observed in the data.
+Table \ref{tbl:compare3} displays the expected daily sales for the three models versus the actual sales for a fixed price of 0.66. It becomes clear that the ZIGP model has a larger distributional variance, and hence has non-zero expected daily sales up to 32 units, which is the largest daily sales figure recorded in the data. Next we will more formally assess the quality of fit by computing a Chi-Square test statistic for each value of price, defined as $\sum_i \frac{(O_i - E_i)^2}{E_i}$. The results of this are given in Table \ref{tbl:compare4}. It is abundantly clear that the ZIGP best captures the features of the data for nearly all price points, although the quality to which it does so varies strongly.
 
-<<compare2, results='asis'>>=
+<<compare3, results='asis'>>=
 actual.1 <- table(factor(subset(bean.data, price == 0.66)$mvm, levels = 0:32))
 expected.sip.1 <- sip.fn(sip.newtraph.full$par, 0:32, 0.66) * length(subset(bean.data, price == 0.66)$mvm)
 expected.zip.1 <- zip.fn(zip.newtraph.full$par, 0:32, 0.66) * length(subset(bean.data, price == 0.66)$mvm)
 expected.zigp.1 <- zigp.fn(c(zigp.newtraph$b0, zigp.newtraph$b1, zigp.newtraph$d0, zigp.newtraph$d1), 0:32, 0.66, zigp.newtraph$alpha) * length(subset(bean.data, price == 0.66)$mvm)
 
-print(xtable(data.frame(y = 0:32, sip.expect = expected.sip.1, zip.expect = expected.zip.1, zigp.expect = expected.zigp.1, actual = as.numeric(actual.1)), digits = c(0, 0, 4, 4, 4, 0)), include.rownames = FALSE)
+print(xtable(data.frame(y = 0:32, sip.expect = expected.sip.1, zip.expect = expected.zip.1, zigp.expect = expected.zigp.1, actual = as.numeric(actual.1)), digits = c(0, 0, 4, 4, 4, 0), label = "tbl:compare3", caption = "Expected sales versus actual sales for the three models at a fixed price of 0.66."), include.rownames = FALSE, table.placement = 'H')
 @
 
-<<compare3, results='asis', warning=FALSE>>=
+<<compare4, results='asis', warning=FALSE>>=
 chi.table <- ldply(sort(unique(bean.data$price)), function(pr) {
     y <- subset(bean.data, price == pr)$mvm
     actual.1 <- table(factor(subset(bean.data, price == pr)$mvm, levels = min(y):min(max(y), 100)))
@@ -827,8 +833,12 @@ chi.table <- ldply(sort(unique(bean.data$price)), function(pr) {
     
     c(price = pr, sip.chi = ch1, zip.chi = ch2, zigp.chi = ch3, best = best)
 })
+chi.table$price <- as.numeric(chi.table$price)
+chi.table$sip.chi <- as.numeric(chi.table$sip.chi)
+chi.table$zip.chi <- as.numeric(chi.table$zip.chi)
+chi.table$zigp.chi <- as.numeric(chi.table$zigp.chi)
 
-xtable(chi.table, display = c("d", "f", "E", "E", "E", "s"), digits = c(0,2, 4, 4, 4, 0))
+print(xtable(chi.table, display = c("d", "f", "g", "g", "g", "s"), digits = c(0, 2, 4, 4, 4, 0), label = "tbl:compare4", caption = "Chi Square test statistics for a goodness of fit test at fixed levels of price."), table.placement = 'H')
 @
 
 \section{Bayesian Estimation of ZIP Model}
@@ -979,11 +989,13 @@ bayes_ests<-group_by(mcmc_allstores,store)%.%
             mean_d1 = mean(delta1), med_d1 = median(median(delta1)),
             mean_b0 = mean(beta0), med_b0 = median(median(beta0)),
             mean_b1 = mean(beta1), med_b1 = median(median(beta1)))
-print(xtable(bayes_ests, digits = c(0, 0, rep(4,8)), caption = "Posterior Means and Medians of the Parameters for the first 9 stores", label = "tbl:Bayes.ests"), table.position = 'H',, include.rownames = FALSE)
+print(xtable(bayes_ests, digits = c(0, 0, rep(4,8)), caption = "Posterior Means and Medians of the Parameters for the first 9 stores", label = "tbl:Bayes.ests"), table.placement = 'H', include.rownames = FALSE)
 @
 
+\section{Conclusion}
+In spite of the significant variation in sales across different stores, the ZIGP model appears to do a relatively good job of describing features in the data. The larger expected sales for high values of price, and larger tail probabilities in the actual ZIGP distribution better capture what the data itself tells us. Note that there is a significant limitations of this analysis, including the fact that we are treating daily sales as independent when some kind of covariance structure would likely be much more appropriate.
 
-
+(Something about Bayes stuff...)
 
 \clearpage
 
