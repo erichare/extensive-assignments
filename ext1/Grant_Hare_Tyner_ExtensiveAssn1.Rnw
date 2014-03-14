@@ -513,8 +513,7 @@ qplot(Price, PredictedSales, data = zip.merge, geom = "line", facets=~Store, col
 @
 
 \subsection{Comparison to pscl}
-We discovered a package available on CRAN, pscl, which claims to be able to fit zero-inflated models for the data. We decided to compare the results obtained from our manual work and our own Newton-Raphson function to the results from this function, which claims to use optim underneath. The comparison is given in Table \ref{tbl:zip.compare}. The results match this package very closely, although it appears that they define the consumer interest parameter in the opposite manner. In other words, $\pi_i$ represents the probability of no consumer interest, while our interpretation is the opposite.
-
+We discovered a package available on CRAN, pscl, which claims to be able to fit zero-inflated models for the data. We decided to compare the results obtained from our manual work and our own Newton-Raphson function to the results from this function, which claims to use optim underneath. The comparison is given in Table \ref{tbl:zip.compare}. The results match this package very closely, although they define the consumer interest parameter in the opposite manner. In other words, $\pi_i$ represents the probability of no consumer interest, while our interpretation is the opposite. This is why the pscl estimates of $\beta$ have opposite sign of ours. 
 <<zip.pscl, results='asis'>>=
 zip.pscl.table <- ldply(stores, function(sto) {
     pscl.zip <- zeroinfl(mvm ~ price, data = subset(bean.data, store == sto), dist = "poisson")
@@ -803,7 +802,7 @@ qplot(price, value, data = comparison.melt, group = variable, colour = variable,
 qplot(price, value, data = subset(comparison.melt, price > 0.3 & price < 0.7), group = variable, colour = variable, geom = "line", linetype= variable,size = I(1.5))
 @
 
-Table \ref{tbl:compare3} displays the expected daily sales for the three models versus the actual sales for a fixed price of 0.66. It becomes clear that the ZIGP model has a larger distributional variance, and hence has non-zero expected daily sales up to 32 units, which is the largest daily sales figure recorded in the data. Next we will more formally assess the quality of fit by computing a Chi-Square test statistic for each value of price, defined as $\sum_i \frac{(O_i - E_i)^2}{E_i}$. The results of this are given in Table \ref{tbl:compare4}. It is abundantly clear that the ZIGP best captures the features of the data for nearly all price points, although the quality to which it does so varies strongly.
+Table \ref{tbl:compare3} displays the expected daily sales for the three models versus the actual sales for a fixed price of 0.66. It becomes clear that the ZIGP model has a larger distributional variance, and hence has non-zero expected daily sales up to 32 units, which is the largest daily sales figure recorded in the data. Next we will more formally assess the quality of fit by computing a Chi-Square test statistic for each value of price, here indexed by $i$, defined as $\sum_i \frac{(O_i - E_i)^2}{E_i}$. The results of this are given in Table \ref{tbl:compare4}. It is abundantly clear that the ZIGP best captures the features of the data for nearly all price points, although the quality to which it does so varies strongly.
 
 <<compare3, results='asis'>>=
 actual.1 <- table(factor(subset(bean.data, price == 0.66)$mvm, levels = 0:32))
@@ -842,7 +841,7 @@ print(xtable(chi.table, display = c("d", "f", "g", "g", "g", "s"), digits = c(0,
 @
 
 \section{Bayesian Estimation of ZIP Model}
-We now consider the ZIP model within a Bayesian framework.  The model we consider is a straightforward Bayesian model for one store with noninformative priors on the model parameters.
+Finally, we consider the ZIP model within a Bayesian framework. We mainly did this out of curiosity to see if we could get Bayesian estimates that matched the MLEs.  Also, Bayesian estimation requires much less calculus than maximum likelihood estimation, so it would be nice to know that derivation of gradients and hessians as complicated as the ones we've encountered in this project can be avoided in the future. The model we consider is a straightforward Bayesian model for one store with noninformative priors on the model parameters.
 \subsection{Prior Distributions}
   \begin{align*}
   Y_i & \sim \text{Poisson}(z_i\cdot \lambda_i ) \\
@@ -1025,7 +1024,7 @@ The Bayesian estimates of $\delta_0$ and $\delta_1$ are nearly identical to the 
 \section{Conclusion}
 In spite of the significant variation in sales across different stores, the ZIGP model appears to do a relatively good job of describing features in the data. The larger expected sales for high values of price, and larger tail probabilities in the actual ZIGP distribution better capture what the data itself tells us. Note that there is a significant limitations of this analysis, including the fact that we are treating daily sales as independent when some kind of covariance structure over time would likely be much more appropriate.
 
-Furthermore, the Bayesian estimation of the ZIP model for individual stores showed us that if we do not have the time or the patience to derive all of the gradient and hessians for a future ZIP model, we can obtain parameter estimates through a Metropolis-within-Gibbs MCMC sampler that are just as accurate as the MLEs without the calculus headache.  The Bayesian model also has the advantage of being expandable by adding a hierarchical structure, so that new stores can be added and grouped by region or some other grouping variable, and the parameters for the whole can be estimated just as easily as the parameters for an individual store.  
+Furthermore, the Bayesian estimation of the ZIP model for individual stores showed us that if we do not have the time or the patience to derive all of the gradient and hessians for a future ZIP model, we can obtain parameter estimates through a Metropolis-within-Gibbs MCMC sampler that are just as accurate as the MLEs without the calculus headache.  The Bayesian model also has the advantage of being expandable by adding a hierarchical structure, so that new stores can be added and grouped by region or some other grouping variable, and the parameters for the whole group or region can be estimated just as easily as the parameters for an individual store.  
 
 \clearpage
 
