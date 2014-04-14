@@ -53,6 +53,41 @@ beta.fn <- function(par, y, x) {
 optim(c(5, -0.5, 1), fn=beta.fn, y = y, x = x, control=list(fnscale = -1), hessian=TRUE)
 @
 
+<<newtraph_beta>>=
+beta.gradient <- function(par, y, x) {
+    T1 <- exp(par[1] + par[2] * x)
+    mu <- 1 / (1 + exp(-(par[1] + par[2] * x)))
+    phi <- par[3]
+    
+    dldmu <- -phi * digamma(mu * phi) + phi * digamma(phi - mu*phi) + phi * log(y) - phi * log(1 - y)
+    dmudb0 <- T1 / (T1 + 1)^2
+    dmudb1 <- x*T1 / (T1 + 1)^2
+    
+    dldb0 <- sum(dldmu * dmudb0)
+    dldb1 <- sum(dldmu * dmudb1)
+    
+    return(c(dldb0, dldb1))
+}
+@
+
+
+\subsection{Derivatives}
+  \subsubsection{First Derivatives}
+  \begin{align*}
+  \frac{\partial \ell_i}{\partial \beta_j} &=  \frac{\partial \ell_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \beta_j}   \quad \text{for $j=0,1$}
+  \end{align*}
+  \begin{align*}
+   \frac{\partial \ell_i}{\partial \mu_i} &= -\phi\Gamma'(\mu_i\phi) + \phi\Gamma'(\phi - \mu_i\phi) + \phi\log{(y_i)} - \phi\log{(1 - y_i)} \\
+   \frac{\partial \mu_i}{\partial \beta_0} &= \frac{e^{\beta_0 + \beta_1x_i}}{(e^{\beta_0 + \beta_1x_i} + 1)^2} \\
+   \frac{\partial \mu_i}{\partial \beta_1} &= \frac{x_ie^{\beta_0 + \beta_1x_i}}{(e^{\beta_0 + \beta_1x_i} + 1)^2} \\
+  \end{align*}
+  
+  \subsubsection{Second Derivatives}
+    \begin{align*}
+    \frac{\partial^2 \ell_i}{\partial \beta_j^2} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2}\frac{\partial \mu_i}{\partial \beta_j} +\frac{\partial^2 \mu_i}{\partial \beta_j^2}\frac{\partial \ell_i}{\partial \mu_i}  \quad \text{for $j=0,1$} \\
+    \frac{\partial^2 \ell_i}{\partial \beta_0\beta_1} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial \mu_i}{\partial \beta_0} \frac{\partial \mu_i}{\partial \beta_1}+ \frac{\partial^2 \mu_i}{\partial \beta_0 \partial \beta_1}\frac{\partial \ell_i}{\partial \mu_i} =  \frac{\partial^2 \ell_i}{\partial \beta_1\beta_0} \\
+    \end{align*}
+
 \subsection{Comparison to betareg Package}
 
 <<betareg, echo=FALSE>>=
