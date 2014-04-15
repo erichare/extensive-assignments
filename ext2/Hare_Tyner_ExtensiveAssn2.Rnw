@@ -1,0 +1,50 @@
+\documentclass[11pt]{article}
+
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{float}
+\usepackage{amsmath}
+
+\begin{document}
+<<concordance, echo=FALSE>>=
+opts_chunk$set(concordance=TRUE)
+opts_knit$set(self.contained=FALSE)
+@
+
+<<libraries, cache=FALSE, echo=FALSE, message=FALSE>>=
+library(plyr)
+library(ggplot2)
+library(reshape2)
+library(xtable)
+library(betareg)
+@
+
+\setlength{\parskip}{3ex}
+\setlength{\parindent}{0pt}
+
+\title{Extensive Assignment 2}
+\author{Eric Hare, Samantha Tyner}
+
+\maketitle
+
+\clearpage
+
+<<readthedata, echo=FALSE>>=
+meat.data <- read.table("betaregressiondat.txt", header = TRUE)
+@
+
+\setcounter{page}{1}
+<<likelihood, child='likelihood.Rnw'>>=
+@
+
+\clearpage
+
+<<bayesian, child='bayesian.Rnw'>>=
+@
+
+\clearpage
+
+<<comparison, child='comparison.Rnw'>>=
+@
+
+\end{document}

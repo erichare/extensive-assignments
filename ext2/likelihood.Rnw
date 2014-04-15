@@ -1,0 +1,97 @@
+\section{Likelihood Analysis}
+
+\subsection{Model Formulation}
+
+Let $Y_{ij}$ be the proportional score of steak i in group j, i = 1,..,50 j = 1,2 \\
+Let $X_{ij}$ be the storage time for steak i,j \\
+Assume $Y_{ij}$ is independent over i and j. \\ \\
+
+We assume $Y_{ij} \sim \text{Beta}(\alpha, \beta)$, and hence we can write the density as: \\
+
+\begin{align*}
+f(y | \alpha,\beta) = \frac{\Gamma(\alpha + \beta)}{\Gamma(\alpha)\Gamma(\beta)}y^{\alpha - 1}(1 - y)^{\beta - 1}, \quad 0 < y < 1, \quad \alpha > 0, \quad \beta > 0
+\end{align*}
+
+We can reparameterize this by noting the expected value and the variance of a Beta random variable. Letting $\mu_i = \frac{\alpha}{\alpha + \beta}$ and $\phi = \alpha + \beta$, we have: \\
+
+\begin{align*}
+f(y_i | \mu_i,\phi) = \frac{\Gamma(\phi)}{\Gamma(\mu_i\phi)\Gamma((1 - \mu_i)\phi)}y_i^{\mu_i\phi - 1}(1 - y_i)^{(1 - \mu_i)\phi - 1}, \quad 0 < y_i < 1, \quad 0 < \mu_i < 1, \quad \phi > 0
+\end{align*}
+
+\begin{align*}
+E(Y)   &= \frac{\alpha}{\alpha + \beta} \\
+       &= \mu \\ \\
+Var(Y) &= \frac{\alpha\beta}{(\alpha + \beta)^2(\alpha + \beta + 1)} \\
+       &= \frac{\mu_i(1 - \mu_i)}{\phi + 1}
+\end{align*}
+
+The likelihood is: \\
+
+\begin{align*}
+L &= \prod_{i=1}^n f(y_i | \mu_i,\phi) \\
+  &= \prod_{i=1}^n \frac{\Gamma(\phi)}{\Gamma(\mu_i\phi)\Gamma((1 - \mu_i)\phi)}y_i^{\mu_i\phi - 1}(1 - y_i)^{(1 - \mu_i)\phi - 1}
+\end{align*}
+
+The log-likelihood is: \\
+
+\begin{align*}
+\ell(\mu_i, \phi) &= \sum_{i=1}^n \log f(y_i | \mu_i,\phi) \\
+  &= \sum_{i=1}^n \log(\Gamma(\phi)) - \log(\Gamma(\mu_i\phi)) - \log(\Gamma((1 - \mu_i)\phi)) + (\mu_i\phi - 1)\log(y_i) + ((1 - \mu_i)\phi - 1)\log(1 - y_i)
+\end{align*}
+
+<<optim>>=
+y <- meat.data$score1
+x <- meat.data$time
+
+beta.fn <- function(par, y, x) {
+    mu <- exp(par[1] + par[2] * x) / (exp(par[1] + par[2] * x) + 1)
+    phi <- par[3]
+    
+    return(sum(log(gamma(phi)) - log(gamma(mu * phi)) - log(gamma(phi * (1 - mu))) + (mu * phi - 1) * log(y) + ((1 - mu) * phi - 1) * log(1 - y)))
+}
+
+optim(c(5, -0.5, 1), fn=beta.fn, y = y, x = x, control=list(fnscale = -1), hessian=TRUE)
+@
+
+<<newtraph_beta>>=
+beta.gradient <- function(par, y, x) {
+    T1 <- exp(par[1] + par[2] * x)
+    mu <- 1 / (1 + exp(-(par[1] + par[2] * x)))
+    phi <- par[3]
+    
+    dldmu <- -phi * digamma(mu * phi) + phi * digamma(phi - mu*phi) + phi * log(y) - phi * log(1 - y)
+    dmudb0 <- T1 / (T1 + 1)^2
+    dmudb1 <- x*T1 / (T1 + 1)^2
+    
+    dldb0 <- sum(dldmu * dmudb0)
+    dldb1 <- sum(dldmu * dmudb1)
+    
+    return(c(dldb0, dldb1))
+}
+@
+
+
+\subsection{Derivatives}
+  \subsubsection{First Derivatives}
+  \begin{align*}
+  \frac{\partial \ell_i}{\partial \beta_j} &=  \frac{\partial \ell_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \beta_j}   \quad \text{for $j=0,1$}
+  \end{align*}
+  \begin{align*}
+   \frac{\partial \ell_i}{\partial \mu_i} &= -\phi\Gamma'(\mu_i\phi) + \phi\Gamma'(\phi - \mu_i\phi) + \phi\log{(y_i)} - \phi\log{(1 - y_i)} \\
+   \frac{\partial \mu_i}{\partial \beta_0} &= \frac{e^{\beta_0 + \beta_1x_i}}{(e^{\beta_0 + \beta_1x_i} + 1)^2} \\
+   \frac{\partial \mu_i}{\partial \beta_1} &= \frac{x_ie^{\beta_0 + \beta_1x_i}}{(e^{\beta_0 + \beta_1x_i} + 1)^2} \\
+  \end{align*}
+  
+  \subsubsection{Second Derivatives}
+    \begin{align*}
+    \frac{\partial^2 \ell_i}{\partial \beta_j^2} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2}\frac{\partial \mu_i}{\partial \beta_j} +\frac{\partial^2 \mu_i}{\partial \beta_j^2}\frac{\partial \ell_i}{\partial \mu_i}  \quad \text{for $j=0,1$} \\
+    \frac{\partial^2 \ell_i}{\partial \beta_0\beta_1} & = \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial \mu_i}{\partial \beta_0} \frac{\partial \mu_i}{\partial \beta_1}+ \frac{\partial^2 \mu_i}{\partial \beta_0 \partial \beta_1}\frac{\partial \ell_i}{\partial \mu_i} =  \frac{\partial^2 \ell_i}{\partial \beta_1\beta_0} \\
+    \end{align*}
+
+\subsection{Comparison to betareg Package}
+
+<<betareg, echo=FALSE>>=
+betareg(score1 ~ time, data = meat.data)
+betareg(score2 ~ time, data = meat.data)
+@
+
