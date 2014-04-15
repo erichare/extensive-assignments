@@ -1,1 +1,18 @@
-This is the second part
+\section{Bayesian Approach}
+
+\subsection{Model Formulation}
+
+Again, let $Y_{ij}$ be the proportional score of steak $i$ in group $j$, $i = 1,..,50$, $j = 1,2$, and suppose that the $Y_i$s follow a Beta($\alpha,\beta$) distribution. Define $\mu_i$ and $\phi$ the same way as in section 1.1.  Then, the Bayesian model formulation of $Y_i$ for each value of $j$ is
+
+\begin{align*}
+y_i & \sim \text{Beta}(\mu_i\phi,(1-\mu_i)\phi) \\
+\text{logit}(\mu_i) & = \beta_0 +\beta_1 x_i \\
+\phi & \sim \text{Gamma}(0.01,0.01) \\
+\beta_0,\beta_1 & \sim \text{Normal}(0,100)
+\end{align*}
+
+Note that the priors on $\phi,\beta_0,\beta_1$ are diffuse, and assume that $\phi$, $\beta_0$, and $\beta_1$ are indepent. The joint posterior of interest here is
+
+\begin{align*}
+p(\phi,\beta_0,\beta_1 | \underaccent{\tilde}{y},\underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}|\beta_0,\beta_1) \pi(\phi)\pi(\beta_0)\pi(\beta_1)
+\end{align*}
