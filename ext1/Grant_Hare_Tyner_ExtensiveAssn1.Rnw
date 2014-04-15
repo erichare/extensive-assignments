@@ -1032,4 +1032,30 @@ Furthermore, the Bayesian estimation of the ZIP model for individual stores show
 <<Rcode, eval=FALSE, ref.label=all_labels()[-1],echo=TRUE, cache=FALSE>>=
 @
 
+\clearpage
+
+\section{Project Roles}
+We tried to work together as much as possible, but we did a lot, so we obviously spent some time working individually and separately. Here is a rough outline of who did what (numbers refer to sections and/or subsections and two names indicate corrections/additions were made to the first person's work by the second person): 
+\begin{itemize}
+\item 1: Eric and Sam
+\item 2: Eric
+\item 3.1: Milli
+\item 3.2.1: Milli and Eric
+\item 3.2.2: Milli and Eric
+\item 3.3: Eric
+\item 4.1: Milli
+\item 4.2.1: Milli and Sam
+\item 4.2.2: Milli and Sam
+\item 4.3: Eric
+\item 5.1: Eric
+\item 5.2.1: Sam and Eric
+\item 5.2.2: Sam and Eric
+\item 5.3: Eric
+\item 6: Eric
+\item 7 (all): Sam
+\item 8: Eric and Sam
+\item 9: All
+\item 10: Sam
+\end{itemize}
+
 \end{document}
