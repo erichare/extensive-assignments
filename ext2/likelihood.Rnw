@@ -207,7 +207,7 @@ X = -2ln(\lambda) &= -2(\Sexpr{mle.comb$loglik} - (\Sexpr{mle.1$loglik} + \Sexpr
                   &= \Sexpr{-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik))}
 \end{align*}
 
-Under the null, $X \sim \chi_2^2$, so at $\alpha = 0.05$ this yields a p-value of $\Sexpr{1 - pchisq(-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik)), df = 2)}. Hence, clearly separate regression lines provide a better fit for the data. Let's assess in what way they do so. Figure \ref{fig:reg_plot} shows the three expectation functions for score1, score2, and the combined data in red, blue, and purple respectively. It also overlays the actual data points for score1 and score2.
+Under the null, $X \sim \chi_2^2$, so at $\alpha = 0.05$ this yields a p-value of \Sexpr{1 - pchisq(-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik)), df = 2)}. Hence, clearly separate regression lines provide a better fit for the data. Let's assess in what way they do so. Figure \ref{fig:reg_plot} shows the three expectation functions for score1, score2, and the combined data in red, blue, and purple respectively. It also overlays the actual data points for score1 and score2.
 
 <<reg_plot, fig.cap='Plot of the data for score1 (red), score2 (blue), and the expectation functions for each regression line, and the combined regression line expectation (purple).'>>=
 x <- seq(0.5, 30, by = 0.5)
@@ -223,6 +223,47 @@ qplot(meat.data$time, mu.1, geom = "line", colour = I("darkred"), size = I(2), a
     geom_point(data = meat.data, aes(x = time, y = score2), colour = "blue", size = 3) +
     geom_line(data = data.frame(x = meat.data$time, y = mu.comb), inherit.aes = FALSE, aes(x = x, y = y), colour = "purple", size = 2, alpha = 0.6)
 @
+
+We can also consider the distribution at a fixed time value of 14, for day 14. 
+
+<<time14>>=
+y <- seq(0.01, 0.99, by = 0.01)
+
+x <- 1
+vals.11 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
+vals.21 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
+
+p1 <- qplot(y, vals.11, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+    geom_point(data = data.frame(x = y, y = vals.21), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
+    geom_line(data = data.frame(x = y, y = vals.21), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+
+x <- 7
+vals.12 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
+vals.22 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
+
+p2 <- qplot(y, vals.12, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+    geom_point(data = data.frame(x = y, y = vals.22), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
+    geom_line(data = data.frame(x = y, y = vals.22), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+
+x <- 14
+vals.13 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
+vals.23 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
+
+p3 <- qplot(y, vals.13, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+    geom_point(data = data.frame(x = y, y = vals.23), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
+    geom_line(data = data.frame(x = y, y = vals.23), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+
+x <- 21
+vals.14 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
+vals.24 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
+
+p4 <- qplot(y, vals.14, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+    geom_point(data = data.frame(x = y, y = vals.24), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
+    geom_line(data = data.frame(x = y, y = vals.24), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+
+grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
+@
+
 
 \subsection{Model Assessment}
 

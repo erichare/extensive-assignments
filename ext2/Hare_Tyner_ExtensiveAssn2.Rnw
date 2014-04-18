@@ -17,6 +17,7 @@ library(ggplot2)
 library(reshape2)
 library(xtable)
 library(betareg)
+library(gridExtra)
 @
 
 \setlength{\parskip}{3ex}
