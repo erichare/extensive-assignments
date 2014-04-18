@@ -47,10 +47,16 @@ phi <- 22.4064558
 beta.fn <- function(par, y, x, phi) {
     mu <- exp(par[1] + par[2] * x) / (exp(par[1] + par[2] * x) + 1)
     
+    return(gamma(phi) / (gamma(mu * phi) * gamma((1 - mu) * phi)) * y^(mu*phi - 1) * (1 - y)^((1 - mu) * phi - 1))
+}
+
+beta.loglik <- function(par, y, x, phi) {
+    mu <- exp(par[1] + par[2] * x) / (exp(par[1] + par[2] * x) + 1)
+    
     return(sum(lgamma(phi) - lgamma(mu * phi) - lgamma(phi * (1 - mu)) + (mu * phi - 1) * log(y) + ((1 - mu) * phi - 1) * log(1 - y)))
 }
 
-optim(c(5, -0.5), fn=beta.fn, y = y, x = x, phi = phi, control=list(fnscale = -1), hessian=TRUE)
+optim(c(5, -0.5), fn=beta.loglik, y = y, x = x, phi = phi, control=list(fnscale = -1), hessian=TRUE)
 @
 
 <<newtraph_beta>>=
@@ -162,24 +168,24 @@ newton.raphson <- function(loglik, gradient, hessian, start, lower = rep(-Inf, l
 y <- meat.data$score1
 phis <- seq(21, 23, by = 0.01)
 profile.beta1 <- ldply(phis, function(phi) {
-    c(phi = phi, unlist(newton.raphson(beta.fn, beta.gradient, beta.hessian, start = c(2, -0.2), y = y, x = x, phi = phi)))
+    c(phi = phi, unlist(newton.raphson(beta.loglik, beta.gradient, beta.hessian, start = c(2, -0.2), y = y, x = x, phi = phi)))
 })
-profile.beta1[which.max(profile.beta1$loglik), ]
+mle.1 <- profile.beta1[which.max(profile.beta1$loglik), ]
 
 y <- meat.data$score2
 phis <- seq(6, 8, by = 0.01)
 profile.beta2 <- ldply(phis, function(phi) {
-    c(phi = phi, unlist(newton.raphson(beta.fn, beta.gradient, beta.hessian, start = c(2, -0.2), y = y, x = x, phi = phi)))
+    c(phi = phi, unlist(newton.raphson(beta.loglik, beta.gradient, beta.hessian, start = c(2, -0.2), y = y, x = x, phi = phi)))
 })
-profile.beta2[which.max(profile.beta2$loglik), ]
+mle.2 <- profile.beta2[which.max(profile.beta2$loglik), ]
 
 y <- c(meat.data$score1, meat.data$score2)
 x <- c(meat.data$time, meat.data$time)
 phis <- seq(6, 8, by = 0.01)
 profile.betacomb <- ldply(phis, function(phi) {
-    c(phi = phi, unlist(newton.raphson(beta.fn, beta.gradient, beta.hessian, start = c(2, -0.2), y = y, x = x, phi = phi)))
+    c(phi = phi, unlist(newton.raphson(beta.loglik, beta.gradient, beta.hessian, start = c(2, -0.2), y = y, x = x, phi = phi)))
 })
-profile.betacomb[which.max(profile.betacomb$loglik), ]
+mle.comb <- profile.betacomb[which.max(profile.betacomb$loglik), ]
 @
 
 
@@ -192,4 +198,31 @@ betareg(score2 ~ time, data = meat.data)
 meat.data.comb <- data.frame(score = c(meat.data$score1, meat.data$score2), time = rep(meat.data$time, 2))
 betareg(score ~ time, data = meat.data.comb)
 @
+
+\subsection{Regression Line Comparison}
+To test whether regressions are the same for each group, we will use a likelihood ratio test, comparing a reduced model consisting of only a single regression line to describe the full set of data, to a full model with separate regression lines for the two scores. We compute $-2ln(\lambda)$ where $\lambda = \frac{\text{Likelihood maximized under reduced model}}{\text{Likelihood maximized under full model}}$. We obtain:
+
+\begin{align*}
+X = -2ln(\lambda) &= -2(\Sexpr{mle.comb$loglik} - (\Sexpr{mle.1$loglik} + \Sexpr{mle.2$loglik})) \\
+                  &= \Sexpr{-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik))}
+\end{align*}
+
+Under the null, $X \sim \chi_2^2$, so at $\alpha = 0.05$ this yields a p-value of $\Sexpr{1 - pchisq(-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik)), df = 2)}. Hence, clearly separate regression lines provide a better fit for the data. Let's assess in what way they do so. Figure \ref{fig:reg_plot} shows the three expectation functions for score1, score2, and the combined data in red, blue, and purple respectively. It also overlays the actual data points for score1 and score2.
+
+<<reg_plot, fig.cap='Plot of the data for score1 (red), score2 (blue), and the expectation functions for each regression line, and the combined regression line expectation (purple).'>>=
+x <- seq(0.5, 30, by = 0.5)
+y <- beta.fn(par = c(mle.1$par1, mle.1$par2), y=meat.data$score1, x = meat.data$time, phi=mle.1$phi)
+
+mu.1 <- exp(mle.1$par1 + mle.1$par2 * meat.data$time) / (exp(mle.1$par1 + mle.1$par2 * meat.data$time) + 1)
+mu.2 <- exp(mle.2$par1 + mle.2$par2 * meat.data$time) / (exp(mle.2$par1 + mle.2$par2 * meat.data$time) + 1)
+mu.comb <- exp(mle.comb$par1 + mle.comb$par2 * meat.data$time) / (exp(mle.comb$par1 + mle.comb$par2 * meat.data$time) + 1)
+
+qplot(meat.data$time, mu.1, geom = "line", colour = I("darkred"), size = I(2), alpha = I(0.6)) +
+    geom_point(data = meat.data, aes(x = time, y = score1), colour = "red", size = 3) +
+    geom_line(data = data.frame(x = meat.data$time, y = mu.2), inherit.aes = FALSE, aes(x = x, y = y), colour = "darkblue", size = 2, alpha = 0.6) + 
+    geom_point(data = meat.data, aes(x = time, y = score2), colour = "blue", size = 3) +
+    geom_line(data = data.frame(x = meat.data$time, y = mu.comb), inherit.aes = FALSE, aes(x = x, y = y), colour = "purple", size = 2, alpha = 0.6)
+@
+
+\subsection{Model Assessment}
 
