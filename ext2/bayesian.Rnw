@@ -3,16 +3,46 @@
 \subsection{Model Formulation}
 
 Again, let $Y_{ij}$ be the proportional score of steak $i$ in group $j$, $i = 1,..,50$, $j = 1,2$, and suppose that the $Y_i$s follow a Beta($\alpha,\beta$) distribution. Define $\mu_i$ and $\phi$ the same way as in section 1.1.  Then, the Bayesian model formulation of $Y_i$ for each value of $j$ is
-
 \begin{align*}
 y_i & \sim \text{Beta}(\mu_i\phi,(1-\mu_i)\phi) \\
 \text{logit}(\mu_i) & = \beta_0 +\beta_1 x_i \\
 \phi & \sim \text{Gamma}(0.01,0.01) \\
-\beta_0,\beta_1 & \sim \text{Normal}(0,100)
+\beta_0,\beta_1 & \sim \text{Uniform}(-50,50)
 \end{align*}
-
-Note that the priors on $\phi,\beta_0,\beta_1$ are diffuse, and assume that $\phi$, $\beta_0$, and $\beta_1$ are indepent. The joint posterior of interest here is
-
+Note that the priors on $\phi,\beta_0,\beta_1$ are diffuse, and assume that $\phi$, $\beta_0$, and $\beta_1$ are independent. We chose the uniform priors on $\beta_1,\beta_2$ because there was no obvious conjugate choice for them. We chose the prior on $\phi$ to be Gamma because that is the same choice given by Branscum, Johnson, and Thurmond in their paper.\footnote{BRANSCUM, ADAM J., JOHNSON, WESLEY O., \& THURMOND, MARK C. (2007).  Bayesian Beta Regression: Applications to Household Expenditure Data and Genetic Distance between Foot-and-Mouth Disease Viruses. \textit{Australian \& New Zealand Journal of Statistics}. \textbf{49}(3), 287-301.} The joint posterior of interest here is
 \begin{align*}
 p(\phi,\beta_0,\beta_1 | \underaccent{\tilde}{y},\underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}|\beta_0,\beta_1) \pi(\phi)\pi(\beta_0)\pi(\beta_1)
 \end{align*}
+
+
+<<jags.check>>=
+library(rjags)
+model<-"model{
+  for (i in 1:N){
+    y[i]~dbeta(alpha[i],beta[i])
+    alpha[i] <- mu[i]*phi
+    beta[i] <- (1-mu[i])*phi
+    logit(mu[i]) <- beta0+beta1*x[i]
+    }
+  beta0 ~ dunif(-50,50)
+  beta1 ~ dunif(-50,50)
+  phi ~ dgamma(0.01,0.01)
+}"
+dat1 <- list(N = nrow(meat.data), y = meat.data$score1, x = meat.data$time)
+m1 <- jags.model(textConnection(model),dat1,n.chains=3, n.adapt=1000)
+res1<- coda.samples(m1,c('beta0','beta1','phi'),n.iter=5000) 
+diag1<-gelman.diag(res1)
+dat2 <- list(N = nrow(meat.data), y = meat.data$score2, x = meat.data$time)
+m2 <- jags.model(textConnection(model),dat2,n.chains=3, n.adapt=1000)
+res2<- coda.samples(m2,c('beta0','beta1','phi'),n.iter=10000) 
+diag2<-gelman.diag(res2)
+library(reshape)
+one_group<-melt(meat.data,id='time')
+dat3<- list(N = nrow(one_group), y = one_group$value, x = one_group$time)
+m3 <- jags.model(textConnection(model),dat3,n.chains=3, n.adapt=1000)
+res3<-coda.samples(m3,c('beta0','beta1','phi'),n.iter=10000) 
+diag3<-gelman.diag(res3)
+@
+      
+
+
