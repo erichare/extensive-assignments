@@ -48,4 +48,10 @@ meat.data <- read.table("betaregressiondat.txt", header = TRUE)
 <<comparison, child='comparison.Rnw'>>=
 @
 
+\clearpage
+
+\section{Code Appendix}
+<<Rcode, eval=FALSE, ref.label=all_labels()[-1],echo=TRUE, cache=FALSE>>=
+@
+
 \end{document}
