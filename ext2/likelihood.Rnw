@@ -39,7 +39,14 @@ The log-likelihood is: \\
   &= \sum_{i=1}^n \log(\Gamma(\phi)) - \log(\Gamma(\mu_i\phi)) - \log(\Gamma((1 - \mu_i)\phi)) + (\mu_i\phi - 1)\log(y_i) + ((1 - \mu_i)\phi - 1)\log(1 - y_i)
 \end{align*}
 
-<<optim>>=
+Although the beta distribution cannot be written in terms of an exponential dispersion family, we will attempt to mimick GLMs in hopes of observing how a beta regression differs from a typical generalized linear model. To do so, we will use a link function which maps the mean $\mu$ onto the real line, a logit link, i.e.,
+
+\begin{align*}
+\mu_i &= h(x_i, \beta) \\
+      &= \frac{e^{(\beta_0 + \beta_1x_i)}}{e^{(\beta_0 + \beta_1x_i)} + 1}
+\end{align*}
+
+<<newtraph_beta>>=
 y <- meat.data$score1
 x <- meat.data$time
 phi <- 22.4064558
@@ -56,10 +63,6 @@ beta.loglik <- function(par, y, x, phi) {
     return(sum(lgamma(phi) - lgamma(mu * phi) - lgamma(phi * (1 - mu)) + (mu * phi - 1) * log(y) + ((1 - mu) * phi - 1) * log(1 - y)))
 }
 
-optim(c(5, -0.5), fn=beta.loglik, y = y, x = x, phi = phi, control=list(fnscale = -1), hessian=TRUE)
-@
-
-<<newtraph_beta>>=
 beta.gradient <- function(par, y, x, phi) {
     T1 <- exp(par[1] + par[2] * x)
     mu <- 1 / (1 + exp(-(par[1] + par[2] * x)))
@@ -264,6 +267,44 @@ p4 <- qplot(y, vals.14, geom = "point", colour = I("red")) + geom_line(colour = 
 grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
 @
 
-
 \subsection{Model Assessment}
 
+\subsubsection{Chi-Square}
+
+To assess the model, we can use a Chi-Square distribution to compare the actual data to the postulated model. We compute:
+
+\begin{align*}
+d = \sum_{i=1}^n\frac{(y_i - \hat{\mu_i})^2}{\hat{Var(\mu_i)}}
+\end{align*}
+
+Noting that $\hat{Var(\mu_i)} = \hat{\mu_i}(1 - \hat{\mu_i})$:
+
+<<chisq>>=
+var.1 <- mu.1 * (1 - mu.1)
+var.2 <- mu.2 * (1 - mu.2)
+d.1 <- sum((meat.data$score1 - mu.1)^2 / var.1)
+d.2 <- sum((meat.data$score2 - mu.2)^2 / var.2)
+@
+
+<<chisq_table, results='asis'>>=
+pval.1 <- 1 - pchisq(d.1, df=(nrow(meat.data)-1))
+pval.2 <- 1 - pchisq(d.2, df=(nrow(meat.data)-1))
+
+my.df <- data.frame(TestStats = c(d.1, d.2), PValues = c(pval.1, pval.2))
+
+xtable(my.df)
+@
+
+\subsubsection{Kolmogorov Statistic}
+We can simulate from our reference beta distributions by recalling the back-transform for $\alpha_i$ and $\beta_i$, which are: \\
+
+$\alpha_i = \mu_i\phi$ \\
+$\beta_i = (1 - \mu_i)\phi$ \\
+
+<<sim_ref>>=
+simvals.1 <- rbeta(nrow(meat.data), shape1=mu.1*mle.1$phi, shape2=(1 - mu.1)*mle.1$phi)
+simvals.2 <- rbeta(nrow(meat.data), shape1=mu.2*mle.2$phi, shape2=(1 - mu.2)*mle.2$phi)
+
+ks.test(meat.data$score1, simvals.1)
+ks.test(meat.data$score2, simvals.2)
+@

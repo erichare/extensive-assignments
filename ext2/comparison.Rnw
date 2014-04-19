@@ -1,1 +1,24 @@
-This is the third part
+\section{What did we gain?}
+
+\subsection{Compared to a Simple Linear Regression}
+
+<<slr>>=
+lm.1 <- lm(score1 ~ time, data = meat.data)
+lm.2 <- lm(score2 ~ time, data = meat.data)
+
+mu.lm.1 <- coef(lm.1)[1] + coef(lm.1)[2] * meat.data$time
+mu.lm.2 <- coef(lm.2)[1] + coef(lm.2)[2] * meat.data$time
+
+p1 <- qplot(meat.data$time, mu.lm.1, geom = "line", colour = I("darkred"), size = I(2), alpha = I(0.6)) +
+    geom_point(data = meat.data, aes(x = time, y = score1), colour = "red", size = 2) + theme(aspect.ratio = 1)
+    
+p2 <- qplot(meat.data$time, mu.lm.2, geom = "line", colour = I("darkblue"), size = I(2), alpha = I(0.6)) + 
+    geom_point(data = meat.data, aes(x = time, y = score2), colour = "blue", size = 2) + theme(aspect.ratio = 1)
+
+p3 <- qplot(fitted(lm.1), resid(lm.1), geom = "point", colour = I("red"), size = I(2)) +
+    geom_hline(yintercept = 0) + theme(aspect.ratio = 1)
+p4 <- qplot(fitted(lm.2), resid(lm.2), geom = "point", colour = I("blue"), size = I(2)) +
+    geom_hline(yintercept = 0) + theme(aspect.ratio = 1)
+
+grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
+@
