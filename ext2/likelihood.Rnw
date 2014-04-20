@@ -1,50 +1,63 @@
-\section{Likelihood Analysis}
-
-\subsection{Model Formulation}
+\section{Model Formulation}
 
 Let $Y_{ij}$ be the proportional score of steak i in group j, i = 1,..,50 j = 1,2 \\
 Let $X_{ij}$ be the storage time for steak i,j \\
 Assume $Y_{ij}$ is independent over i and j. \\ \\
 
-We assume $Y_{ij} \sim \text{Beta}(\alpha, \beta)$, and hence we can write the density as: \\
+We assume $Y_{ij} \sim \text{Beta}(\alpha_{ij}, \beta_{ij})$, and hence we can write the density as: \\
 
 \begin{align*}
-f(y | \alpha,\beta) = \frac{\Gamma(\alpha + \beta)}{\Gamma(\alpha)\Gamma(\beta)}y^{\alpha - 1}(1 - y)^{\beta - 1}, \quad 0 < y < 1, \quad \alpha > 0, \quad \beta > 0
+f(y_{ij} | \alpha_{ij},\beta_{ij}) = \frac{\Gamma(\alpha_{ij} + \beta_{ij})}{\Gamma(\alpha_{ij})\Gamma(\beta_{ij})}y_{ij}^{\alpha_{ij} - 1}(1 - y_{ij})^{\beta_{ij} - 1}, \quad 0 < y_{ij} < 1, \quad \alpha_{ij} > 0, \quad \beta_{ij} > 0
 \end{align*}
 
-We can reparameterize this by noting the expected value and the variance of a Beta random variable. Letting $\mu_i = \frac{\alpha}{\alpha + \beta}$ and $\phi = \alpha + \beta$, we have: \\
+We can reparameterize this by noting the expected value and the variance of a Beta random variable. Letting $\mu_{ij} = \frac{\alpha_{ij}}{\alpha_{ij} + \beta_{ij}}$ and $\phi_j = \alpha_{ij} + \beta_{ij}$ (Note that $\phi_j$ is constant within group j because we are holding $\alpha_{ij} + \beta_{ij}$ fixed), we have: \\
 
 \begin{align*}
-f(y_i | \mu_i,\phi) = \frac{\Gamma(\phi)}{\Gamma(\mu_i\phi)\Gamma((1 - \mu_i)\phi)}y_i^{\mu_i\phi - 1}(1 - y_i)^{(1 - \mu_i)\phi - 1}, \quad 0 < y_i < 1, \quad 0 < \mu_i < 1, \quad \phi > 0
+f(y_{ij} | \mu_{ij}, \phi_j) = \frac{\Gamma(\phi_j)}{\Gamma(\mu_{ij}\phi_{ij})\Gamma((1 - \mu_{ij})\phi_j)}y_{ij}^{\mu_{ij}\phi_j - 1}(1 - y_{ij})^{(1 - \mu_{ij})\phi_j - 1}, \quad 0 < y_{ij} < 1, \quad 0 < \mu_{ij} < 1, \quad \phi_j > 0
 \end{align*}
+
+We can calculate the expected value and the variance of $Y_{ij}$ given this new parameterization as:
 
 \begin{align*}
-E(Y)   &= \frac{\alpha}{\alpha + \beta} \\
-       &= \mu \\ \\
-Var(Y) &= \frac{\alpha\beta}{(\alpha + \beta)^2(\alpha + \beta + 1)} \\
-       &= \frac{\mu_i(1 - \mu_i)}{\phi + 1}
+E(Y_{ij})   &= \frac{\alpha_{ij}}{\alpha_{ij} + \beta_{ij}} \\
+          &= \frac{\alpha_{ij}}{\phi_j} \\
+          &= \mu_{ij} \\ \\
+Var(Y_{ij}) &= \frac{\alpha_{ij}\beta_{ij}}{(\alpha_{ij} + \beta_{ij})^2(\alpha_{ij} + \beta_{ij} + 1)} \\
+          &= \frac{\mu_{ij}(1 - \mu_{ij})}{\phi_j + 1}
 \end{align*}
 
-The likelihood is: \\
+It may also be desired to write $\alpha_{ij}$ and $\beta_{ij}$ in terms of the parameters $\mu_{ij}$ and $\phi_j$ for future clarity:
+
 
 \begin{align*}
-L &= \prod_{i=1}^n f(y_i | \mu_i,\phi) \\
-  &= \prod_{i=1}^n \frac{\Gamma(\phi)}{\Gamma(\mu_i\phi)\Gamma((1 - \mu_i)\phi)}y_i^{\mu_i\phi - 1}(1 - y_i)^{(1 - \mu_i)\phi - 1}
+\alpha_{ij} &= \mu_{ij}\phi_j \\
+\beta_{ij}  &= (1 - \mu_{ij})\phi_j
 \end{align*}
 
-The log-likelihood is: \\
+We are going to fit a regression to each group separately. The likelihood for group j is: \\
 
 \begin{align*}
-\ell(\mu_i, \phi) &= \sum_{i=1}^n \log f(y_i | \mu_i,\phi) \\
-  &= \sum_{i=1}^n \log(\Gamma(\phi)) - \log(\Gamma(\mu_i\phi)) - \log(\Gamma((1 - \mu_i)\phi)) + (\mu_i\phi - 1)\log(y_i) + ((1 - \mu_i)\phi - 1)\log(1 - y_i)
+L_j(\mu_{ij}, \phi_j) &= \prod_{i=1}^n f(y_{ij} | \mu_{ij},\phi_j) \\
+                  &= \prod_{i=1}^n \frac{\Gamma(\phi_j)}{\Gamma(\mu_{ij}\phi_j)\Gamma((1 - \mu_{ij})\phi_j)}y_{ij}^{\mu_{ij}\phi_j - 1}(1 - y_{ij})^{(1 - \mu_{ij})\phi_j - 1}
 \end{align*}
 
-Although the beta distribution cannot be written in terms of an exponential dispersion family, we will attempt to mimick GLMs in hopes of observing how a beta regression differs from a typical generalized linear model. To do so, we will use a link function which maps the mean $\mu$ onto the real line, a logit link, i.e.,
+The log-likelihood for group j is: \\
 
 \begin{align*}
-\mu_i &= h(x_i, \beta) \\
-      &= \frac{e^{(\beta_0 + \beta_1x_i)}}{e^{(\beta_0 + \beta_1x_i)} + 1}
+\ell_j(\mu_{ij}, \phi_j) &= \sum_{i=1}^n \log f(y_{ij} | \mu_{ij},\phi_j) \\
+  &= \sum_{i=1}^n \log(\Gamma(\phi_j)) - \log(\Gamma(\mu_{ij}\phi_j)) - \log(\Gamma((1 - \mu_{ij})\phi_j)) + (\mu_{ij}\phi - 1)\log(y_{ij}) + ((1 - \mu_{ij})\phi_j - 1)\log(1 - y_{ij})
 \end{align*}
+
+Although the beta distribution cannot be written in terms of an exponential dispersion family, we will attempt to mimick GLMs in hopes of observing how a beta regression differs from a typical generalized linear model. To do so, we will use a link function which maps the mean $\mu_{ij}$ onto the real line, a logit link, i.e.,
+
+\begin{align*}
+\mu_{ij} &= h(x_{ij}, \beta_{kj}) \\
+      &= \frac{e^{(\beta_{0j} + \beta_{1j}x_{ij})}}{e^{(\beta_{0j} + \beta_{1j}x_{ij})} + 1}
+\end{align*}
+
+\section{Likelihood Analysis}
+
+We will use a newton-raphson algorithm in order to maximize the log-likelihood in $\beta$. We will profile out $\phi$ for each of the two groups to obtain maximum likelihood estimates for all of the regression parameters.
 
 <<newtraph_beta>>=
 y <- meat.data$score1
@@ -101,11 +114,13 @@ beta.hessian <- function(par, y, x, phi) {
 }
 @
 
-
 \subsection{Derivatives}
+
+Note: For notational convenience, we will drop the j subscript indexing group and assume that these derivatives are written in terms of a group j.
+
   \subsubsection{First Derivatives}
   \begin{align*}
-  \frac{\partial \ell_i}{\partial \beta_j} &=  \frac{\partial \ell_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \beta_j}   \quad \text{for $j=0,1$}
+  \frac{\partial \ell_i}{\partial \beta_k} &=  \frac{\partial \ell_i}{\partial \mu_i} \frac{\partial \mu_i}{\partial \beta_k}   \quad \text{for $k=0,1$}
   \end{align*}
   \begin{align*}
    \frac{\partial \ell_i}{\partial \mu_i} &= -\phi\Gamma'(\mu_i\phi) + \phi\Gamma'(\phi - \mu_i\phi) + \phi\log{(y_i)} - \phi\log{(1 - y_i)} \\
@@ -115,7 +130,7 @@ beta.hessian <- function(par, y, x, phi) {
   
   \subsubsection{Second Derivatives}
     \begin{align*}
-    \frac{\partial^2 \ell_i}{\partial \beta_j^2} &= \frac{\partial^2 \ell_i}{\partial \mu_i^2}\frac{\partial \mu_i}{\partial \beta_j} +\frac{\partial^2 \mu_i}{\partial \beta_j^2}\frac{\partial \ell_i}{\partial \mu_i}  \quad \text{for $j=0,1$} \\
+    \frac{\partial^2 \ell_i}{\partial \beta_k^2} &= \frac{\partial^2 \ell_i}{\partial \mu_i^2}\frac{\partial \mu_i}{\partial \beta_k} +\frac{\partial^2 \mu_i}{\partial \beta_k^2}\frac{\partial \ell_i}{\partial \mu_i}  \quad \text{for $k=0,1$} \\
     \frac{\partial^2 \ell_i}{\partial \beta_0\beta_1} &= \frac{\partial^2 \ell_i}{\partial \mu_i^2} \frac{\partial \mu_i}{\partial \beta_0} \frac{\partial \mu_i}{\partial \beta_1}+ \frac{\partial^2 \mu_i}{\partial \beta_0 \partial \beta_1}\frac{\partial \ell_i}{\partial \mu_i} =  \frac{\partial^2 \ell_i}{\partial \beta_1\beta_0} \\
     \frac{\partial^2 \ell_i}{\partial \mu_i^2} &= -\phi^2\Gamma''(\mu_i\phi) - \phi^2\Gamma''(\phi - \mu_i\phi) \\
     \frac{\partial^2 \mu_i}{\partial \beta_0^2} &= -\frac{e^{(\beta_0 + \beta_1x_i)}(e^{(\beta_0 + \beta_1x_i)} - 1)}{(e^{(\beta_0 + \beta_1x_i)})^3} \\
@@ -123,7 +138,10 @@ beta.hessian <- function(par, y, x, phi) {
     \frac{\partial^2 \mu_i}{\partial \beta_0\beta_1^2} &= -x_i\frac{e^{(\beta_0 + \beta_1x_i)}(e^{-(\beta_0 + \beta_1x_i)} - 1)}{(e^{(\beta_0 + \beta_1x_i)})^3} \\
     \end{align*}
     
-    <<newtraph, echo=TRUE>>=
+\subsection{Newton-Raphson}
+We wrote a newton-raphson function which follows the algorithm from STAT 520. The code is reproduced below:
+
+<<newtraph, echo=TRUE>>=
 newton.raphson <- function(loglik, gradient, hessian, start, lower = rep(-Inf, length(start)), upper = rep(Inf, length(start)), tol = rep(1e-2, 3), max.iterations = 100, step.halving = TRUE, debug = FALSE, ...) {
     current <- start
     conditions <- TRUE
@@ -167,7 +185,6 @@ newton.raphson <- function(loglik, gradient, hessian, start, lower = rep(-Inf, l
 @
 
 <<profile_code>>=
-
 y <- meat.data$score1
 phis <- seq(21, 23, by = 0.01)
 profile.beta1 <- ldply(phis, function(phi) {
@@ -191,15 +208,35 @@ profile.betacomb <- ldply(phis, function(phi) {
 mle.comb <- profile.betacomb[which.max(profile.betacomb$loglik), ]
 @
 
+<<profile_plots, fig.cap='Profile plots of the value of the log-likelihood at particular values of phi for each of the two groups'>>=
+p1 <- qplot(profile.beta1$phi, profile.beta1$loglik, geom = "line", colour = I("red")) + theme(aspect.ratio = 1) + geom_vline(xintercept = mle.1$phi) + xlab("phi1") + ylab("Log-Likelihood")
+p2 <- qplot(profile.beta2$phi, profile.beta2$loglik, geom = "line", colour = I("blue")) + theme(aspect.ratio = 1) + geom_vline(xintercept = mle.2$phi) + xlab("phi2") + ylab("Log-Likelihood")
+
+grid.arrange(p1, p2, ncol = 2)
+@
+
+The MLEs obtained by this procedure are given in Table \ref{tbl:mles}.
+
+<<mle_table, results='asis'>>=
+my.df <- data.frame(Group = c("Group1", "Group2", "Combined"), beta0 = c(mle.1$par1, mle.2$par1, mle.comb$par1), beta1 = c(mle.1$par2, mle.2$par2, mle.comb$par2), phi = c(mle.1$phi, mle.2$phi, mle.comb$phi))
+
+print(xtable(my.df, digits = 4, label = "tbl:mles", caption = "MLEs for the first group, second group, and the two groups combined."), include.rownames = FALSE)
+@
 
 \subsection{Comparison to betareg Package}
 
-<<betareg, echo=FALSE>>=
-betareg(score1 ~ time, data = meat.data)
-betareg(score2 ~ time, data = meat.data)
+We discovered a package that claims to perform beta regression on CRAN, called {\it betareg}. It uses a similar parameterization, but uses {\it optim} rather than a Newton-based method for optimization. We fit a beta regression using this package to each group, and to the combined data, and obtained the results given in \ref{tbl:mlesbreg}. The results are very similar.
+
+<<betareg, echo=FALSE, results='asis'>>=
+breg1 <- betareg(score1 ~ time, data = meat.data)
+breg2 <- betareg(score2 ~ time, data = meat.data)
 
 meat.data.comb <- data.frame(score = c(meat.data$score1, meat.data$score2), time = rep(meat.data$time, 2))
-betareg(score ~ time, data = meat.data.comb)
+bregcomb <- betareg(score ~ time, data = meat.data.comb)
+
+my.df <- data.frame(Group = c("Group1", "Group2", "Combined"), beta0 = c(coef(breg1)[1], coef(breg2)[1], coef(bregcomb)[1]), beta1 = c(coef(breg1)[2], coef(breg2)[2], coef(bregcomb)[2]), phi = c(coef(breg1)[3], coef(breg2)[3], coef(bregcomb)[3]))
+
+print(xtable(my.df, digits = 4, label = "tbl:mlesbreg", caption = "MLEs for the first group, second group, and the two groups combined as given by the betareg package on CRAN."), include.rownames = FALSE)
 @
 
 \subsection{Regression Line Comparison}

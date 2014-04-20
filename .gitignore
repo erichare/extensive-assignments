@@ -3,3 +3,8 @@
 .RData
 *.Rproj
 *.sty
+*.tex
+*.log
+*.pdf
+*.gz
+cache
