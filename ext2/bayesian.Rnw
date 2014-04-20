@@ -15,7 +15,7 @@ p(\phi,\beta_0,\beta_1 | \underaccent{\tilde}{y},\underaccent{\tilde}{x}) & \pro
 \end{align*}
 
 
-<<jags.check>>=
+<<jags.check, cache=TRUE>>=
 library(rjags)
 model<-"model{
   for (i in 1:N){
