@@ -16,7 +16,6 @@ p(\phi,\beta_0,\beta_1 | \underaccent{\tilde}{y},\underaccent{\tilde}{x}) & \pro
 
 
 <<jags.check, cache=TRUE>>=
-library(rjags)
 model<-"model{
   for (i in 1:N){
     y[i]~dbeta(alpha[i],beta[i])
@@ -36,7 +35,6 @@ dat2 <- list(N = nrow(meat.data), y = meat.data$score2, x = meat.data$time)
 m2 <- jags.model(textConnection(model),dat2,n.chains=3, n.adapt=1000)
 res2<- coda.samples(m2,c('beta0','beta1','phi'),n.iter=10000) 
 diag2<-gelman.diag(res2)
-library(reshape)
 one_group<-melt(meat.data,id='time')
 dat3<- list(N = nrow(one_group), y = one_group$value, x = one_group$time)
 m3 <- jags.model(textConnection(model),dat3,n.chains=3, n.adapt=1000)

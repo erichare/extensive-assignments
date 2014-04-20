@@ -15,9 +15,11 @@ opts_knit$set(self.contained=FALSE)
 library(plyr)
 library(ggplot2)
 library(reshape2)
+library(reshape)
 library(xtable)
 library(betareg)
 library(gridExtra)
+library(rjags)
 @
 
 \setlength{\parskip}{3ex}
