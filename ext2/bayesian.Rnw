@@ -14,6 +14,131 @@ Note that the priors on $\phi,\beta_0,\beta_1$ are diffuse, and assume that $\ph
 p(\phi,\beta_0,\beta_1 | \underaccent{\tilde}{y},\underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}|\beta_0,\beta_1) \pi(\phi)\pi(\beta_0)\pi(\beta_1)
 \end{align*}
 
+<<metro.in.gibbs>>=
+#data log likelihood
+beta.loglik <- function(par, y, x, phi) {
+    mu <- exp(par[1] + par[2] * x) / (exp(par[1] + par[2] * x) + 1)
+    
+    return(sum((mu * phi - 1) * log(y) + ((1 - mu) * phi - 1) * log(1 - y)-lbeta(mu*phi,(1-mu)*phi)))
+}
+#priors for phi (no prior for beta0,beta1 since they're uniform)
+prior.phi<-function(phi,a=0.01,b=0.01){
+  a*log(b)-lgamma(a) + (a-1)*log(phi)-b*phi
+}
+#Metropolis Hastings steps for beta, delta
+sample_beta <- function(beta0, y, x, phi0,sigma.b){
+  beta_star<-c(0,0)
+  beta_star[1] <- rnorm(1,beta0[1],sigma.b) #proposal dists
+  beta_star[2] <- rnorm(1,beta0[2],sigma.b)
+  
+  f_bstar<-beta.loglik(beta_star, y, x, phi0)
+  f_b<-beta.loglik(beta0, y, x, phi0)
+  
+  varmat<-matrix(c(sigma.b,0,0,sigma.b),nrow=2)
+  
+  q_bstar<-log(det(varmat)^(-1/2)*exp((-1/2)*t(beta_star-beta0)%*%solve(varmat)%*%(beta_star-beta0)))
+  q_b<-log(det(varmat)^(-1/2)*exp((-1/2)*t(beta0-beta_star)%*%solve(varmat)%*%(beta0-beta_star)))
+  
+  log_rho_b<-min((f_bstar - f_b) + (q_b - q_bstar) , 0)
+  if (is.nan(log_rho_b)){
+      log_rho_b <- 0
+    }
+  
+  if (log(runif(1)) <= log_rho_b){
+    acc.new = 1
+  }
+   else acc.new = 0
+  
+  if (acc.new == 1){
+    return(beta_star)
+  }
+  else return(beta0)
+}
+sample_phi <- function(y,x,phi0,beta0){
+  phi_star<-rgamma(1,shape=10,rate=.45) #symmetric/independent proposal
+
+  f_pstar<-beta.loglik(beta0, y, x, phi_star)+prior.phi(phi_star)
+  f_p<-beta.loglik(beta0, y, x, phi0)+prior.phi(phi0)
+  
+  log_rho_p<-min((f_pstar - f_p),0) 
+    if (is.nan(log_rho_p)){
+      log_rho_p <- 0
+    }
+  p<-log(runif(1))
+ if (p <= log_rho_p){
+    acc.new.p = 1
+  }
+  else acc.new.p = 0
+  
+  if (acc.new.p == 1){
+    return(phi_star)
+  }
+  else return(phi0)
+}
+#Final Metropolis-within-Gibbs MCMC sampler to draw samples from the joint posterior distribution
+run_mcmc = function(y, x, beta0, phi0, n.reps=1e3, tune=TRUE, sigma.b=10) {
+  beta_keep = matrix(0,ncol=2,nrow=n.reps); beta_keep[1,] = beta = beta0
+  phi_keep =  matrix(0,nrow=n.reps); phi_keep[1,] = phi = phi0
+  
+  for (i in 1:n.reps) {
+    # Automatically tune beta var
+    beta_old <- beta
+    beta <- sample_beta(beta_old,y,x,phi0,sigma.b) #Metropolis step
+    if (tune==TRUE) {
+       if (sum(beta==beta_old)==2) {  #if next draw is rejected then make var smaller  (accept prob too low)
+         sigma.b = sigma.b/1.1 
+       } else {
+         sigma.b = sigma.b*1.1  #increase var to get more of the density sampled  (accept prob too high)
+       }
+     }
+    # Automatically tune phi var
+    phi_old <- phi
+    phi <- sample_phi(y,x,phi_old,beta) #Metropolis step
+#     if (tune==TRUE) {
+#       if (sum(phi==phi_old)==2) {  #if next draw is rejected then make var smaller  (accept prob too low)
+#         sigma.p = sigma.p*1.1 
+#       } else {
+#         sigma.p = sigma.p/1.1  #increase var to get more of the density sampled  (accept prob too high)
+#       }
+#     }
+#     
+    beta_keep[i,]  = beta
+    phi_keep[i,]   = phi
+    }
+  return(list(beta=beta_keep,phi=phi_keep,sigma.b))  
+}
+
+one_group<-data.frame(cbind(rep(meat.data$time,2),c(meat.data$score1,meat.data$score2)))
+names(one_group)<-c('time','score')
+y<-meat.data$score1
+y2<-meat.data$score2
+x<-meat.data$time
+#score 1
+run1.score1<-run_mcmc(y,x,c(1,-1),20,n.reps=1e4)
+run2.score1<-run_mcmc(y,x,c(2,-.5),25,n.reps=1e4)
+run3.score1<-run_mcmc(y,x,c(3,-3),15,n.reps=1e4)
+betas.score1<-rbind(run1.score1[[1]],run2.score1[[1]],run3.score1[[1]])
+phi.score1<-rbind(run1.score1[[2]],run2.score1[[2]],run3.score1[[2]])
+#score 2
+run1.score2<-run_mcmc(y2,x,c(1,-1),20,n.reps=1e4)
+run2.score2<-run_mcmc(y2,x,c(2,-.5),25,n.reps=1e4)
+run3.score2<-run_mcmc(y2,x,c(3,-3),15,n.reps=1e4)
+betas.score2<-rbind(run1.score2[[1]],run2.score2[[1]],run3.score2[[1]])
+phi.score2<-rbind(run1.score2[[2]],run2.score2[[2]],run3.score2[[2]])
+#combined groups
+one_group<-data.frame(cbind(rep(meat.data$time,2),c(meat.data$score1,meat.data$score2)))
+names(one_group)<-c('time','score')
+y3<-one_group$score
+x3<-one_group$time
+run1.both<-run_mcmc(y3,x3,c(1,-1),20,n.reps=1e4)
+run2.both<-run_mcmc(y3,x3,c(2,-.5),25,n.reps=1e4)
+run3.both<-run_mcmc(y3,x3,c(3,-3),15,n.reps=1e4)
+betas.both<-rbind(run1.both[[1]],run2.both[[1]],run3.both[[1]])
+phi.both<-rbind(run1.both[[2]],run2.both[[2]],run3.both[[2]])
+@
+
+
+
 
 <<jags.check>>=
 library(rjags)
@@ -36,8 +161,6 @@ dat2 <- list(N = nrow(meat.data), y = meat.data$score2, x = meat.data$time)
 m2 <- jags.model(textConnection(model),dat2,n.chains=3, n.adapt=1000)
 res2<- coda.samples(m2,c('beta0','beta1','phi'),n.iter=10000) 
 diag2<-gelman.diag(res2)
-library(reshape)
-one_group<-melt(meat.data,id='time')
 dat3<- list(N = nrow(one_group), y = one_group$value, x = one_group$time)
 m3 <- jags.model(textConnection(model),dat3,n.chains=3, n.adapt=1000)
 res3<-coda.samples(m3,c('beta0','beta1','phi'),n.iter=10000) 
