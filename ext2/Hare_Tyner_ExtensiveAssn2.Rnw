@@ -7,6 +7,7 @@
 
 \begin{document}
 <<concordance, echo=FALSE>>=
+library(knitr)
 opts_chunk$set(concordance=TRUE, echo=FALSE)
 opts_knit$set(self.contained=FALSE)
 @
@@ -15,9 +16,11 @@ opts_knit$set(self.contained=FALSE)
 library(plyr)
 library(ggplot2)
 library(reshape2)
+library(reshape)
 library(xtable)
 library(betareg)
 library(gridExtra)
+library(rjags)
 @
 
 \setlength{\parskip}{3ex}
@@ -46,6 +49,12 @@ meat.data <- read.table("betaregressiondat.txt", header = TRUE)
 \clearpage
 
 <<comparison, child='comparison.Rnw'>>=
+@
+
+\clearpage
+
+\section{Code Appendix}
+<<Rcode, eval=FALSE, ref.label=all_labels()[-1],echo=TRUE, cache=FALSE>>=
 @
 
 \end{document}
