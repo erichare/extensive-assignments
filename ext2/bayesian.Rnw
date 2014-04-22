@@ -11,12 +11,19 @@ y_i & \sim \text{Beta}(\mu_i\phi,(1-\mu_i)\phi) \\
 \end{align*}
 Note that the priors on $\phi,\beta_0,\beta_1$ are diffuse, and assume that $\phi$, $\beta_0$, and $\beta_1$ are independent. We chose the uniform priors on $\beta_1,\beta_2$ because there was no obvious conjugate choice for them. We chose the prior on $\phi$ to be Gamma because that is the same choice given by Branscum, Johnson, and Thurmond in their paper.\footnote{BRANSCUM, ADAM J., JOHNSON, WESLEY O., \& THURMOND, MARK C. (2007).  Bayesian Beta Regression: Applications to Household Expenditure Data and Genetic Distance between Foot-and-Mouth Disease Viruses. \textit{Australian \& New Zealand Journal of Statistics}. \textbf{49}(3), 287-301.} The joint posterior of interest here is
 \begin{align*}
-p(\phi,\beta_0,\beta_1 | \underaccent{\tilde}{y},\underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}|\beta_0,\beta_1) \pi(\phi)\pi(\beta_0)\pi(\beta_1)
+p(\phi,\beta_0,\beta_1 | \underaccent{\tilde}{y},\underaccent{\tilde}{x}) & \propto f(\underaccent{\tilde}{y}|\beta_0,\beta_1,\phi) \pi(\phi)\pi(\beta_0)\pi(\beta_1)
 \end{align*}
 
-<<metro.in.gibbs>>=
-#data log likelihood
-beta.loglik <- function(par, y, x, phi) {
+We sample from this distribution by using Metropolis-within-Gibbs sampling, using a Metropolis step to sample from the full conditionals of $(\beta_0,\beta_1)$ and $\phi$, which are given below by 
+\begin{align*}
+p(\beta_0,\beta_1 |  \underaccent{\tilde}{y},\underaccent{\tilde}{x}, \phi)  & \propto \prod_{i=1}^n \frac{\Gamma(\phi)}{\Gamma(\mu_{i}\phi)\Gamma((1 - \mu_{i})\phi)}y_{i}^{\mu_{i}\phi - 1}(1 - y_{i})^{(1 - \mu_{i})\phi - 1} \\
+p(\phi |  \underaccent{\tilde}{y},\underaccent{\tilde}{x}, \beta_0,\beta_1) & \propto \left[\prod_{i=1}^n \frac{\Gamma(\phi)}{\Gamma(\mu_{i}\phi)\Gamma((1 - \mu_{i})\phi)}y_{i}^{\mu_{i}\phi - 1}(1 - y_{i})^{(1 - \mu_{i})\phi - 1}\right] \times \phi^{0.01-1}e^{-0.01\phi}
+\end{align*}
+The code for our Metropolis-within-Gibbs sampler is given below. Note that we are using a normal proposal distribution for $\beta_0,\beta_1$ and a symmetric proposal distribution for $\phi$.  We chose a symmetric proposal distribution for $\phi$ because the Gamma distribution does not have a mean parameter like the normal distribution, so it was harder and more variable to incorporate the the previous sampling value into the proposal distribution.    
+
+<<metro.in.gibbs,echo=TRUE>>=
+#likelihood function
+beta.loglik<-function(par, y, x, phi) {
     mu <- exp(par[1] + par[2] * x) / (exp(par[1] + par[2] * x) + 1)
     
     return(sum((mu * phi - 1) * log(y) + ((1 - mu) * phi - 1) * log(1 - y)-lbeta(mu*phi,(1-mu)*phi)))
@@ -25,7 +32,7 @@ beta.loglik <- function(par, y, x, phi) {
 prior.phi<-function(phi,a=0.01,b=0.01){
   a*log(b)-lgamma(a) + (a-1)*log(phi)-b*phi
 }
-#Metropolis Hastings steps for beta, delta
+#Metropolis Hastings steps for beta, phi
 sample_beta <- function(beta0, y, x, phi0,sigma.b){
   beta_star<-c(0,0)
   beta_star[1] <- rnorm(1,beta0[1],sigma.b) #proposal dists
@@ -55,7 +62,7 @@ sample_beta <- function(beta0, y, x, phi0,sigma.b){
   else return(beta0)
 }
 sample_phi <- function(y,x,phi0,beta0){
-  phi_star<-rgamma(1,shape=10,rate=.45) #symmetric/independent proposal
+  phi_star<-rgamma(1,shape=10,rate=.45) #symmetric proposal
 
   f_pstar<-beta.loglik(beta0, y, x, phi_star)+prior.phi(phi_star)
   f_p<-beta.loglik(beta0, y, x, phi0)+prior.phi(phi0)
@@ -91,23 +98,18 @@ run_mcmc = function(y, x, beta0, phi0, n.reps=1e3, tune=TRUE, sigma.b=10) {
          sigma.b = sigma.b*1.1  #increase var to get more of the density sampled  (accept prob too high)
        }
      }
-    # Automatically tune phi var
+    
     phi_old <- phi
     phi <- sample_phi(y,x,phi_old,beta) #Metropolis step
-#     if (tune==TRUE) {
-#       if (sum(phi==phi_old)==2) {  #if next draw is rejected then make var smaller  (accept prob too low)
-#         sigma.p = sigma.p*1.1 
-#       } else {
-#         sigma.p = sigma.p/1.1  #increase var to get more of the density sampled  (accept prob too high)
-#       }
-#     }
-#     
+    
     beta_keep[i,]  = beta
     phi_keep[i,]   = phi
     }
   return(list(beta=beta_keep,phi=phi_keep,sigma.b))  
 }
-
+@
+We ran the sampler for 3 chains of 10,000 draws each for the score1, score2, and combined groups.  The posterior medians for the parameter values are given below: 
+<<run_mcmc>>=
 one_group<-data.frame(cbind(rep(meat.data$time,2),c(meat.data$score1,meat.data$score2)))
 names(one_group)<-c('time','score')
 y<-meat.data$score1
@@ -136,11 +138,71 @@ run3.both<-run_mcmc(y3,x3,c(3,-3),15,n.reps=1e4)
 betas.both<-rbind(run1.both[[1]],run2.both[[1]],run3.both[[1]])
 phi.both<-rbind(run1.both[[2]],run2.both[[2]],run3.both[[2]])
 @
+<<table_medians,results='asis'>>=
+#plots of draws
+library(xtable)
+meds.score1<-c(median(betas.score1[,1]),median(betas.score1[,2]),median(phi.score1))
+meds.score2<-c(median(betas.score2[,1]),median(betas.score2[,2]),median(phi.score2))
+meds.both<-c(median(betas.both[,1]),median(betas.both[,2]),median(phi.both))
+medians<-data.frame(rbind(meds.score1,meds.score2,meds.both))
+names(medians)<-c('beta0','beta1','phi')
+medians$Group<-c('Score1','Score2','Combined')
+medians<-medians[,c(4,1:3)]
+print(xtable(medians))
+@
+<<plots,warning=FALSE,message=FALSE>>=
+library(ggplot2)
+library(gridExtra)
+p1 <- qplot(betas.score1[,1], geom = "histogram", binwidth = 0.05,
+    main = "beta0 - score 1") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(betas.score1[,1]),color='red')
+p2 <- qplot(betas.score1[,2], geom = "histogram", binwidth = 0.01,
+    main = "beta1 - score 1") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(betas.score1[,2]),color='red')+xlim(-1,-.2)
+p3 <- qplot(phi.score1, geom = "histogram", binwidth = .5,
+    main = "phi - score 1") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(phi.score1),color='red')
+p4 <- qplot(betas.score2[,1], geom = "histogram", binwidth = 0.05,
+    main = "beta0 - score 2") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(betas.score2[,1]),color='red')
+p5 <- qplot(betas.score2[,2], geom = "histogram", binwidth = 0.01,
+    main = "beta1 - score 2") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(betas.score2[,2]),color='red')+xlim(-1,-.2)
+p6 <- qplot(phi.score2, geom = "histogram", binwidth = .5,
+    main = "phi - score 2") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(phi.score2),color='red')
+
+p7 <- qplot(betas.both[,1], geom = "histogram", binwidth = 0.1,
+    main = "beta0 - both scores") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(betas.both[,1]),color='red')
+p8 <- qplot(betas.both[,2], geom = "histogram", binwidth = 0.01,
+    main = "beta1 - both scores") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(betas.both[,2]),color='red')+xlim(-1,-.2)
+p9 <- qplot(phi.both, geom = "histogram", binwidth = .25,
+    main = "phi - both scores") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(phi.both),color='red')
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9)
+@
+<<post.simulation>>=
+#quantities of interest: # less than .10, # greater than .90, value at time 14
+
+new_scores<-function(x,par){
+  mus<-exp(par[1]+par[2]*x) / (exp(par[1]+par[2]*x)+1)
+  phi<-par[3]
+  y.new<-rbeta(length(x),mus*phi,(1-mus)*phi)
+  return(y.new)
+}
+post.sim.score1<-matrix(0,nrow=1e4,ncol=50)
+for (i in 1:1e4){
+  post.sim.score1[i,]<-new_scores(x,meds.score1)
+}
+post.sim.score2<-matrix(0,nrow=1e4,ncol=50)
+for (i in 1:1e4){
+  post.sim.score2[i,]<-new_scores(x,meds.score2)
+}
+post.sim.both<-matrix(0,nrow=1e4,ncol=100)
+for (i in 1:1e4){
+  post.sim.both[i,]<-new_scores(x3,meds.both)
+}
+
+lowvals.score1<-apply(post.sim.score1,1,function(x) length(which(x<=.1)))
+hivals.score1<-apply(post.sim.score1,1,function(x) length(which(x>=.9)))
+
+@
 
 
-
-
-<<jags.check, cache=TRUE>>=
+<<jags.check, cache=TRUE,warning=FALSE,message=FALSE>>=
 model<-"model{
   for (i in 1:N){
     y[i]~dbeta(alpha[i],beta[i])
@@ -156,14 +218,36 @@ dat1 <- list(N = nrow(meat.data), y = meat.data$score1, x = meat.data$time)
 m1 <- jags.model(textConnection(model),dat1,n.chains=3, n.adapt=1000)
 res1<- coda.samples(m1,c('beta0','beta1','phi'),n.iter=5000) 
 diag1<-gelman.diag(res1)
+
+betas.score1.jags<-rbind(res1[[1]][,1:2],res1[[2]][,1:2],res1[[3]][,1:2])
+phi.score1.jags<-rbind(res1[[1]][,3],res1[[2]][,3],res1[[3]][,3])
+
 dat2 <- list(N = nrow(meat.data), y = meat.data$score2, x = meat.data$time)
 m2 <- jags.model(textConnection(model),dat2,n.chains=3, n.adapt=1000)
 res2<- coda.samples(m2,c('beta0','beta1','phi'),n.iter=10000) 
 diag2<-gelman.diag(res2)
+
+betas.score2.jags<-rbind(res2[[1]][,1:2],res2[[2]][,1:2],res2[[3]][,1:2])
+phi.score2.jags<-rbind(res2[[1]][,3],res2[[2]][,3],res2[[3]][,3])
+
 dat3<- list(N = nrow(one_group), y = one_group$score, x = one_group$time)
 m3 <- jags.model(textConnection(model),dat3,n.chains=3, n.adapt=1000)
 res3<-coda.samples(m3,c('beta0','beta1','phi'),n.iter=10000) 
 diag3<-gelman.diag(res3)
+
+betas.both.jags<-rbind(res3[[1]][,1:2],res3[[2]][,1:2],res3[[3]][,1:2])
+phi.both.jags<-rbind(res3[[1]][,3],res3[[2]][,3],res3[[3]][,3])
+
+medians.jags<-data.frame(rbind(c(median(betas.score1.jags[,1]),median(betas.score1.jags[,2]),median(phi.score1.jags)),
+c(median(betas.score2.jags[,1]),median(betas.score2.jags[,2]),median(phi.score2.jags)),
+c(median(betas.both.jags[,1]),median(betas.both.jags[,2]),median(phi.both.jags))))
+names(medians.jags)<-c('beta0','beta1','phi')
+medians.jags$Group<-c('Score1','Score2','Combined')
+medians.jags<-medians.jags[,c(4,1:3)]
+@
+We compared this to running the same model in the rjags package.  The JAGS posterior medians were much closer to the MLEs than our MCMC posterior medians.  
+<<jags_medians,results='asis'>>=
+print(xtable(medians.jags))
 @
       
 
