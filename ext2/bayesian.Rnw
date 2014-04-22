@@ -198,7 +198,55 @@ for (i in 1:1e4){
 
 lowvals.score1<-apply(post.sim.score1,1,function(x) length(which(x<=.1)))
 hivals.score1<-apply(post.sim.score1,1,function(x) length(which(x>=.9)))
+score1.14<-post.sim.score1[,28]
+tstat.lvals.score1<-length(which(y<=.1))
+tstat.hvals.score1<-length(which(y>=.9))
+tstat.score1.14<-meat.data[28,2]
+pval1.score1<-length(which(lowvals.score1>=tstat.lvals.score1))/length(lowvals.score1)
+pval2.score1<-length(which(hivals.score1<=tstat.hvals.score1))/length(hivals.score1)
+pval3.score1<-length(which(score1.14>=tstat.score1.14))/length(score1.14)
 
+lowvals.score2<-apply(post.sim.score2,1,function(x) length(which(x<=.1)))
+hivals.score2<-apply(post.sim.score2,1,function(x) length(which(x>=.9)))
+score2.14<-post.sim.score2[,28]
+tstat.lvals.score2<-length(which(y2<=.1))
+tstat.hvals.score2<-length(which(y2>=.9))
+tstat.score2.14<-meat.data[28,3]
+pval1.score2<-length(which(lowvals.score2>=tstat.lvals.score2))/length(lowvals.score2)
+pval2.score2<-length(which(hivals.score2<=tstat.hvals.score2))/length(hivals.score2)
+pval3.score2<-length(which(score2.14>=tstat.score2.14))/length(score2.14)
+
+
+lowvals.both<-apply(post.sim.both,1,function(x) length(which(x<=.1)))
+hivals.both<-apply(post.sim.both,1,function(x) length(which(x>=.9)))
+both.14<-c(post.sim.both[,28],post.sim.both[,78])
+tstat.lvals.both<-length(which(y3<=.1))
+tstat.hvals.both<-length(which(y3>=.9))
+tstat.both.14<-mean(c(tstat.score1.14,tstat.score2.14))
+pval1.both<-length(which(lowvals.both>=tstat.lvals.both))/length(lowvals.both)
+pval2.both<-length(which(hivals.both<=tstat.hvals.both))/length(hivals.both)
+pval3.both<-length(which(both.14>=tstat.both.14))/length(both.14)
+
+h1<-qplot(lowvals.score1,geom='bar',binwidth=1,main='Number <= 0.1 in Predictive Samples')+geom_vline(xintercept=tstat.lvals.score1,color='red')+theme(text = element_text(size = 7))
+h2<-qplot(hivals.score1,geom='bar',binwidth=1,main='Number >= 0.9 in Predictive Samples')+geom_vline(xintercept=tstat.hvals.score1,color='red')+theme(text = element_text(size = 7))
+h3<-qplot(score1.14,geom='histogram',binwidth=.02,main='Score at time 14 in Predictive Samples')+geom_vline(xintercept=tstat.score1.14,color='red')+theme(text = element_text(size = 7))
+
+h4<-qplot(lowvals.score2,geom='bar',binwidth=1,main='Number <= 0.1 in Predictive Samples')+geom_vline(xintercept=tstat.lvals.score2,color='red')+theme(text = element_text(size = 7))
+h5<-qplot(hivals.score2,geom='bar',binwidth=1,main='Number >= 0.9 in Predictive Samples')+geom_vline(xintercept=tstat.hvals.score2,color='red')+theme(text = element_text(size = 7))
+h6<-qplot(score2.14,geom='histogram',binwidth=.02,main='Score at time 14 in Predictive Samples')+geom_vline(xintercept=tstat.score2.14,color='red')+theme(text = element_text(size = 7))
+
+h7<-qplot(lowvals.both,geom='bar',binwidth=1,main='Number <= 0.1 in Predictive Samples')+geom_vline(xintercept=tstat.lvals.both,color='red')+theme(text = element_text(size = 7))
+h8<-qplot(hivals.both,geom='bar',binwidth=1,main='Number >= 0.9 in Predictive Samples')+geom_vline(xintercept=tstat.hvals.both,color='red')+theme(text = element_text(size = 7))
+h9<-qplot(both.14,geom='histogram',binwidth=.02,main='Score at time 14 in Predictive Samples')+geom_vline(xintercept=tstat.both.14,color='red')+theme(text = element_text(size = 7))
+
+grid.arrange(h1,h2,h3,h4,h5,h6,h7,h8,h9)
+@
+
+<<pvals.posts,results='asis'>>=
+pvalues<-data.frame(rbind(c(pval1.score1,pval2.score1,pval3.score1), c(pval1.score2,pval2.score2,pval3.score2),c(pval1.both,pval2.both,pval3.both)))
+names(pvalues)<-c('<=0.1','>=0.9','Score.14')
+rownames(pvalues)<-c('Group1','Group2','Combined')
+print(xtable(pvalues))
 @
 
 
