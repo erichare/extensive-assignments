@@ -22,3 +22,36 @@ p4 <- qplot(fitted(lm.2), resid(lm.2), geom = "point", colour = I("blue"), size 
 
 grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
 @
+
+\subsection{Compared to a Transformed}
+<<transform>>=
+meat.data$transscore1 <- log(meat.data$score1 / (1 - meat.data$score1))
+meat.data$transscore2 <- log(meat.data$score2 / (1 - meat.data$score2))
+
+p1 <- qplot(score1, geom = "histogram", data = meat.data)
+p2 <- qplot(transscore1, geom = "histogram", data = meat.data)
+p3 <- qplot(score2, geom = "histogram", data = meat.data)
+p4 <- qplot(transscore2, geom = "histogram", data = meat.data)
+
+grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
+@
+
+<<transform2>>=
+lmtrans.1 <- lm(transscore1 ~ time, data = meat.data)
+lmtrans.2 <- lm(transscore2 ~ time, data = meat.data)
+
+mu.lmtrans.1 <- coef(lmtrans.1)[1] + coef(lmtrans.1)[2] * meat.data$time
+mu.lmtrans.2 <- coef(lmtrans.2)[1] + coef(lmtrans.2)[2] * meat.data$time
+
+p1 <- qplot(meat.data$time, mu.lmtrans.1, geom = "line", colour = I("darkred"), size = I(2), alpha = I(0.6)) +
+    geom_point(data = meat.data, aes(x = time, y = transscore1), colour = "red", size = 2) + theme(aspect.ratio = 1)
+p2 <- qplot(meat.data$time, mu.lmtrans.2, geom = "line", colour = I("darkblue"), size = I(2), alpha = I(0.6)) + 
+    geom_point(data = meat.data, aes(x = time, y = transscore2), colour = "blue", size = 2) + theme(aspect.ratio = 1)
+
+p3 <- qplot(fitted(lmtrans.1), resid(lmtrans.1), geom = "point", colour = I("red"), size = I(2)) +
+    geom_hline(yintercept = 0) + theme(aspect.ratio = 1)
+p4 <- qplot(fitted(lmtrans.2), resid(lmtrans.2), geom = "point", colour = I("blue"), size = I(2)) +
+    geom_hline(yintercept = 0) + theme(aspect.ratio = 1)
+
+grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
+@

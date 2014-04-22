@@ -345,3 +345,15 @@ simvals.2 <- rbeta(nrow(meat.data), shape1=mu.2*mle.2$phi, shape2=(1 - mu.2)*mle
 ks.test(meat.data$score1, simvals.1)
 ks.test(meat.data$score2, simvals.2)
 @
+
+\subsubsection{Generalized Residuals}
+<<gres>>=
+gres.1 <- pbeta(meat.data$score1, mu.1 * mle.1$phi, (1 - mu.1) * mle.1$phi)
+random.unif.1 <- runif(length(meat.data$score1), 0, 1)
+gres.2 <- pbeta(meat.data$score2, mu.2 * mle.2$phi, (1 - mu.2) * mle.2$phi)
+random.unif.2 <- runif(length(meat.data$score2), 0, 1)
+
+ks.test(gres.1, random.unif.1)
+ks.test(gres.2, random.unif.2)
+@
+

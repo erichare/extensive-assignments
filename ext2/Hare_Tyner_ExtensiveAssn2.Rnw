@@ -38,17 +38,19 @@ meat.data <- read.table("betaregressiondat.txt", header = TRUE)
 @
 
 \setcounter{page}{1}
-<<likelihood, child='likelihood.Rnw'>>=
+<<likelihood, child='introduction.Rnw'>>=
 @
 
-\clearpage
+<<likelihood, child='likelihood.Rnw'>>=
+@
 
 <<bayesian, child='bayesian.Rnw'>>=
 @
 
-\clearpage
-
 <<comparison, child='comparison.Rnw'>>=
+@
+
+<<likelihood, child='conclusion.Rnw'>>=
 @
 
 \clearpage
