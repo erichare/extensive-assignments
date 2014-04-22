@@ -2,7 +2,9 @@
 
 \subsection{Compared to a Simple Linear Regression}
 
-<<slr>>=
+We fit a simple linear regression model of score on time for each of the two groups. Figure \ref{fig:slr} illustrates the model fit and the residual plots for the two groups. It can be seen that this model does a much poorer job of explaining the variability in the data, in particular for the new method of storing steaks (group 2). The residual plot exhibits a significant V-pattern in which the model under-estimates scores early in time, overestimates them in the middle (including day 14), and then begins predicting negative scores when a score cannot be below zero.
+
+<<slr, fig.cap='Fit and residual plot for a simple linear regression of score on time for the two groups.', message=FALSE>>=
 lm.1 <- lm(score1 ~ time, data = meat.data)
 lm.2 <- lm(score2 ~ time, data = meat.data)
 
@@ -23,20 +25,22 @@ p4 <- qplot(fitted(lm.2), resid(lm.2), geom = "point", colour = I("blue"), size 
 grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
 @
 
-\subsection{Compared to a Transformed}
-<<transform>>=
+\subsection{Compared to an SLR with Transformed Response}
+We also fit a simple linear regression by transforming the response variables using the logit function. We did so in an attempt to make the data more closely resemble a normal distribution. Figure \ref{fig:transform} illustrates the result of the transformation by plotting histograms of the response variables for each group. Figure \ref{fig:transform2} shows the model fit results and residual plots for this new model. This seems to do a much better job of explaining the variability in group 1, but for group 2 the residuals exhibit a serious trend.
+
+<<transform, message=FALSE, fig.cap='Original and Transformed response variable (scores) for the two groups.'>>=
 meat.data$transscore1 <- log(meat.data$score1 / (1 - meat.data$score1))
 meat.data$transscore2 <- log(meat.data$score2 / (1 - meat.data$score2))
 
-p1 <- qplot(score1, geom = "histogram", data = meat.data)
-p2 <- qplot(transscore1, geom = "histogram", data = meat.data)
-p3 <- qplot(score2, geom = "histogram", data = meat.data)
-p4 <- qplot(transscore2, geom = "histogram", data = meat.data)
+p1 <- qplot(score1, geom = "histogram", data = meat.data, fill = I("red")) + ggtitle("Original Data")
+p2 <- qplot(transscore1, geom = "histogram", data = meat.data, fill = I("red")) + ggtitle("Transformed Data")
+p3 <- qplot(score2, geom = "histogram", data = meat.data, fill = I("blue")) + ggtitle("Original Data")
+p4 <- qplot(transscore2, geom = "histogram", data = meat.data, fill = I("blue")) + ggtitle("Transformed Data")
 
-grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
+grid.arrange(p1, p3, p2, p4, ncol = 2, nrow = 2)
 @
 
-<<transform2>>=
+<<transform2, fig.cap='Fit and residual plot for a simple linear regression of score on time for the two groups with transformed response variables.'>>=
 lmtrans.1 <- lm(transscore1 ~ time, data = meat.data)
 lmtrans.2 <- lm(transscore2 ~ time, data = meat.data)
 
