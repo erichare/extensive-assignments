@@ -10,7 +10,7 @@ We assume $Y_{ij} \sim \text{Beta}(\alpha_{ij}, \beta_{ij})$, and hence we can w
 f(y_{ij} | \alpha_{ij},\beta_{ij}) = \frac{\Gamma(\alpha_{ij} + \beta_{ij})}{\Gamma(\alpha_{ij})\Gamma(\beta_{ij})}y_{ij}^{\alpha_{ij} - 1}(1 - y_{ij})^{\beta_{ij} - 1}, \quad 0 < y_{ij} < 1, \quad \alpha_{ij} > 0, \quad \beta_{ij} > 0
 \end{align*}
 
-We can reparameterize this by noting the expected value and the variance of a Beta random variable. Letting $\mu_{ij} = \frac{\alpha_{ij}}{\alpha_{ij} + \beta_{ij}}$ and $\phi_j = \alpha_{ij} + \beta_{ij}$ (Note that $\phi_j$ is constant within group j because we are holding $\alpha_{ij} + \beta_{ij}$ fixed), we have: \\
+We can reparameterize this by noting the expected value and the variance of a Beta random variable. Letting $\mu_{ij} = \frac{\alpha_{ij}}{\alpha_{ij} + \beta_{ij}}$ and $\phi_j = \alpha_{ij} + \beta_{ij}$. $\phi_j$ is constant within group j because we are holding $\alpha_{ij} + \beta_{ij}$ fixed - Note that this constraint was shown on a previous homework to not significantly impact the results of the analysis. Therefore, we have: \\
 
 \begin{align*}
 f(y_{ij} | \mu_{ij}, \phi_j) = \frac{\Gamma(\phi_j)}{\Gamma(\mu_{ij}\phi_{ij})\Gamma((1 - \mu_{ij})\phi_j)}y_{ij}^{\mu_{ij}\phi_j - 1}(1 - y_{ij})^{(1 - \mu_{ij})\phi_j - 1}, \quad 0 < y_{ij} < 1, \quad 0 < \mu_{ij} < 1, \quad \phi_j > 0
@@ -208,14 +208,7 @@ profile.betacomb <- ldply(phis, function(phi) {
 mle.comb <- profile.betacomb[which.max(profile.betacomb$loglik), ]
 @
 
-<<profile_plots, fig.cap='Profile plots of the value of the log-likelihood at particular values of phi for each of the two groups'>>=
-p1 <- qplot(profile.beta1$phi, profile.beta1$loglik, geom = "line", colour = I("red")) + theme(aspect.ratio = 1) + geom_vline(xintercept = mle.1$phi) + xlab("phi1") + ylab("Log-Likelihood")
-p2 <- qplot(profile.beta2$phi, profile.beta2$loglik, geom = "line", colour = I("blue")) + theme(aspect.ratio = 1) + geom_vline(xintercept = mle.2$phi) + xlab("phi2") + ylab("Log-Likelihood")
-
-grid.arrange(p1, p2, ncol = 2)
-@
-
-The MLEs obtained by this procedure are given in Table \ref{tbl:mles}.
+The MLEs obtained by this procedure are given in Table \ref{tbl:mles}. In obtaining the MLEs for $\phi$, we used a profile method. The profile plots of values of $\phi$ against the value of the log-likelihoods are given in Figure \ref{fig:profile_plots}.
 
 <<mle_table, results='asis'>>=
 my.df <- data.frame(Group = c("Group1", "Group2", "Combined"), beta0 = c(mle.1$par1, mle.2$par1, mle.comb$par1), beta1 = c(mle.1$par2, mle.2$par2, mle.comb$par2), phi = c(mle.1$phi, mle.2$phi, mle.comb$phi))
@@ -223,9 +216,16 @@ my.df <- data.frame(Group = c("Group1", "Group2", "Combined"), beta0 = c(mle.1$p
 print(xtable(my.df, digits = 4, label = "tbl:mles", caption = "MLEs for the first group, second group, and the two groups combined."), include.rownames = FALSE)
 @
 
+<<profile_plots, fig.cap='Profile plots of the value of the log-likelihood at particular values of phi for each of the two groups'>>=
+p1 <- qplot(profile.beta1$phi, profile.beta1$loglik, geom = "line", colour = I("red")) + theme(aspect.ratio = 1) + geom_vline(xintercept = mle.1$phi) + xlab("phi1") + ylab("Log-Likelihood")
+p2 <- qplot(profile.beta2$phi, profile.beta2$loglik, geom = "line", colour = I("blue")) + theme(aspect.ratio = 1) + geom_vline(xintercept = mle.2$phi) + xlab("phi2") + ylab("Log-Likelihood")
+
+grid.arrange(p1, p2, ncol = 2)
+@
+
 \subsection{Comparison to betareg Package}
 
-We discovered a package that claims to perform beta regression on CRAN, called {\it betareg}. It uses a similar parameterization, but uses {\it optim} rather than a Newton-based method for optimization. We fit a beta regression using this package to each group, and to the combined data, and obtained the results given in \ref{tbl:mlesbreg}. The results are very similar.
+We discovered a package that claims to perform beta regression on CRAN, called {\it betareg}. It uses a similar parameterization, but uses {\it optim} rather than a Newton-based method for optimization. We fit a beta regression using this package to each group, and to the combined data, and obtained the results given in Table \ref{tbl:mlesbreg}. The results are very similar.
 
 <<betareg, echo=FALSE, results='asis'>>=
 breg1 <- betareg(score1 ~ time, data = meat.data)
@@ -240,14 +240,14 @@ print(xtable(my.df, digits = 4, label = "tbl:mlesbreg", caption = "MLEs for the 
 @
 
 \subsection{Regression Line Comparison}
-To test whether regressions are the same for each group, we will use a likelihood ratio test, comparing a reduced model consisting of only a single regression line to describe the full set of data, to a full model with separate regression lines for the two scores. We compute $-2ln(\lambda)$ where $\lambda = \frac{\text{Likelihood maximized under reduced model}}{\text{Likelihood maximized under full model}}$. We obtain:
+To test whether regressions are the same for each group, we will use a likelihood ratio test, comparing a reduced model consisting of only a single regression line to describe the full set of data, to a full model with separate regression lines for the two scores. If we reject the null hypothesis, this suggests that we would prefer to use separate regression lines, and hence we cannot assume the regression lines are the same between the two groups. We compute $-2ln(\lambda)$ where $\lambda = \frac{\text{Likelihood maximized under reduced model}}{\text{Likelihood maximized under full model}}$. We obtain:
 
 \begin{align*}
 X = -2ln(\lambda) &= -2(\Sexpr{mle.comb$loglik} - (\Sexpr{mle.1$loglik} + \Sexpr{mle.2$loglik})) \\
                   &= \Sexpr{-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik))}
 \end{align*}
 
-Under the null, $X \sim \chi_2^2$, so at $\alpha = 0.05$ this yields a p-value of \Sexpr{1 - pchisq(-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik)), df = 2)}. Hence, clearly separate regression lines provide a better fit for the data. Let's assess in what way they do so. Figure \ref{fig:reg_plot} shows the three expectation functions for score1, score2, and the combined data in red, blue, and purple respectively. It also overlays the actual data points for score1 and score2.
+Under the null, $X \sim \chi_3^2$, so at $\alpha = 0.05$ this yields a p-value of \Sexpr{1 - pchisq(-2 * (mle.comb$loglik - (mle.1$loglik + mle.2$loglik)), df = 3)}. Hence, clearly separate regression lines provide a better fit for the data. Let's assess in what way they do so. Figure \ref{fig:reg_plot} shows the three expectation functions for score1, score2, and the combined data in red, blue, and purple respectively. It also overlays the actual data points for score1 and score2. The separate model fit expectation functions certainly appear to do a good job of modeling the temporal trends in the data.
 
 <<reg_plot, fig.cap='Plot of the data for score1 (red), score2 (blue), and the expectation functions for each regression line, and the combined regression line expectation (purple).'>>=
 x <- seq(0.5, 30, by = 0.5)
@@ -264,42 +264,42 @@ qplot(meat.data$time, mu.1, geom = "line", colour = I("darkred"), size = I(2), a
     geom_line(data = data.frame(x = meat.data$time, y = mu.comb), inherit.aes = FALSE, aes(x = x, y = y), colour = "purple", size = 2, alpha = 0.6)
 @
 
-We can also consider the distribution at a fixed time value of 14, for day 14. 
+We can also consider the distribution at a fixed time values, including day 14, which is of particular interest. Figure \ref{fig:timeplots} illustrates the distributions according to the two models for each of days 1, 7, 14, and 21. Interesting trends can be observed. For instance, at day 1, the new method (group 2) has a peak that is closer to 1, a perfect score. By day 7, the two groups have about the same mean at about 0.75, but there is considerably more variability in the distribution of group 2. By day 14, group 1 has a larger mean score centered at about 0.3, while group 2 has a mean much closer to zero. Nonetheless, group 2's variability means the model places more density in group 2's distribution above about a score of 0.6. At day 21, group 1 is nearing zero while nearly all of the density for group 2 is at about zero.
 
-<<time14>>=
+<<timeplots, fig.cap='Distributions of proportional score according to the fitted model for group 1 (red) and group 2 (blue) at day 1, 7, 14, and 21.'>>=
 y <- seq(0.01, 0.99, by = 0.01)
 
 x <- 1
 vals.11 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
 vals.21 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
 
-p1 <- qplot(y, vals.11, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+p1 <- qplot(y, vals.11, geom = "point", colour = I("red")) + geom_line(colour = I("red")) + ggtitle("Distribution at Day 1") +
     geom_point(data = data.frame(x = y, y = vals.21), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
-    geom_line(data = data.frame(x = y, y = vals.21), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+    geom_line(data = data.frame(x = y, y = vals.21), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") + xlab("Proportional Score") + ylab("Density")
 
 x <- 7
 vals.12 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
 vals.22 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
 
-p2 <- qplot(y, vals.12, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+p2 <- qplot(y, vals.12, geom = "point", colour = I("red")) + geom_line(colour = I("red")) + ggtitle("Distribution at Day 7") +
     geom_point(data = data.frame(x = y, y = vals.22), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
-    geom_line(data = data.frame(x = y, y = vals.22), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+    geom_line(data = data.frame(x = y, y = vals.22), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") + xlab("Proportional Score") + ylab("Density")
 
 x <- 14
 vals.13 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
 vals.23 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
 
-p3 <- qplot(y, vals.13, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+p3 <- qplot(y, vals.13, geom = "point", colour = I("red")) + geom_line(colour = I("red")) + ggtitle("Distribution at Day 14") +
     geom_point(data = data.frame(x = y, y = vals.23), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
-    geom_line(data = data.frame(x = y, y = vals.23), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+    geom_line(data = data.frame(x = y, y = vals.23), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") + xlab("Proportional Score") + ylab("Density")
 
 x <- 21
 vals.14 <- beta.fn(c(mle.1$par1, mle.1$par2), y, x, mle.1$phi)
 vals.24 <- beta.fn(c(mle.2$par1, mle.2$par2), y, x, mle.2$phi)
 
-p4 <- qplot(y, vals.14, geom = "point", colour = I("red")) + geom_line(colour = I("red")) +
+p4 <- qplot(y, vals.14, geom = "point", colour = I("red")) + geom_line(colour = I("red")) + ggtitle("Distribution at Day 21") +
     geom_point(data = data.frame(x = y, y = vals.24), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") +
-    geom_line(data = data.frame(x = y, y = vals.24), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue")
+    geom_line(data = data.frame(x = y, y = vals.24), inherit.aes = FALSE, aes(x = x, y = y), colour = "blue") + xlab("Proportional Score") + ylab("Density")
 
 grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
 @
@@ -314,7 +314,7 @@ To assess the model, we can use a Chi-Square distribution to compare the actual 
 d = \sum_{i=1}^n\frac{(y_i - \hat{\mu_i})^2}{\hat{Var(\mu_i)}}
 \end{align*}
 
-Noting that $\hat{Var(\mu_i)} = \hat{\mu_i}(1 - \hat{\mu_i})$:
+Noting that $\hat{Var(\mu_i)} = \hat{\mu_i}(1 - \hat{\mu_i})$, we obtain the results presented in Table \ref{tbl:chisq_table}.
 
 <<chisq>>=
 var.1 <- mu.1 * (1 - mu.1)
@@ -329,7 +329,7 @@ pval.2 <- 1 - pchisq(d.2, df=(nrow(meat.data)-1))
 
 my.df <- data.frame(TestStats = c(d.1, d.2), PValues = c(pval.1, pval.2))
 
-xtable(my.df)
+print(xtable(my.df, caption = "Chi-Square test statistic and p-value for comparing the data to the postulated model.", label = "tbl:chisq_table"), include.rownames = FALSE)
 @
 
 \subsubsection{Kolmogorov Statistic}
@@ -338,22 +338,49 @@ We can simulate from our reference beta distributions by recalling the back-tran
 $\alpha_i = \mu_i\phi$ \\
 $\beta_i = (1 - \mu_i)\phi$ \\
 
-<<sim_ref>>=
+Doing so, we obtain the results in Table \ref{tbl:sim_ref}. Note that both p-values are insignificant and hence we can conclude there is no strong evidence of a distributional difference between the simulated model data and the actual data.
+
+<<sim_ref, results='asis'>>=
 simvals.1 <- rbeta(nrow(meat.data), shape1=mu.1*mle.1$phi, shape2=(1 - mu.1)*mle.1$phi)
 simvals.2 <- rbeta(nrow(meat.data), shape1=mu.2*mle.2$phi, shape2=(1 - mu.2)*mle.2$phi)
 
-ks.test(meat.data$score1, simvals.1)
-ks.test(meat.data$score2, simvals.2)
+kstest1 <- ks.test(meat.data$score1, simvals.1)
+kstest2 <- ks.test(meat.data$score2, simvals.2)
+
+my.df <- data.frame(Group = c("Group1", "Group2"), "Statistic" = c(kstest1$statistic, kstest2$statistic), "P-Value" = c(kstest1$p.value, kstest2$p.value))
+
+print(xtable(my.df, label = "tbl:sim_ref", caption = "Results of the Kolmogrov-Smirnoff Test for comparing the actual data to randomly generated values from the fitted model.", digits = 4), include.rownames = FALSE)
 @
 
 \subsubsection{Generalized Residuals}
-<<gres>>=
+By using the pbeta function in R, we can compute generalized residuals in order to assess the model. We did so, and then compared the distribution to a uniform(0, 1) using a Kolmogrov-Smirnoff test statistic simliar to above. Once again, as seen in Table \ref{tbl:gres}, the model seems to be a good fit to the actual data for both groups.
+
+<<gres, results='asis'>>=
 gres.1 <- pbeta(meat.data$score1, mu.1 * mle.1$phi, (1 - mu.1) * mle.1$phi)
 random.unif.1 <- runif(length(meat.data$score1), 0, 1)
 gres.2 <- pbeta(meat.data$score2, mu.2 * mle.2$phi, (1 - mu.2) * mle.2$phi)
 random.unif.2 <- runif(length(meat.data$score2), 0, 1)
 
-ks.test(gres.1, random.unif.1)
-ks.test(gres.2, random.unif.2)
+gres.test1 <- ks.test(gres.1, random.unif.1)
+gres.test2 <- ks.test(gres.2, random.unif.2)
+
+my.df <- data.frame(Group = c("Group1", "Group2"), "Statistic" = c(gres.test1$statistic, gres.test2$statistic), "P-Value" = c(gres.test1$p.value, gres.test2$p.value))
+
+print(xtable(my.df, label = "tbl:gres", caption = "Results of the Kolmogrov-Smirnoff Test for comparing the Generalized Residuals of the fitted models to a sample from a uniform(0, 1) distribution", digits = 4), include.rownames = FALSE)
 @
 
+\subsubsection{At Day 14}
+Of particular interest is day 14, since this is the typical shelf-life for steaks. Hence, it is interesting to see whether the new method, score2, may extend the shelf life beyond the traditional day 14. To assess whether our model describes what is seen in the data well, we will simulate data from the two fitted models and then compare it to the actual proportional score at day 14. Figure \ref{fig:day14} illustrates the results. Note first that the model produces less variability for the first group. The second group has a lower mean/peak, but has a larger upper tail - In other words, the model thinks that at day 14, the quality of the meat is likely to be lower for group 2, but there is significant variability such that there is a higher probability of scores in the upper range, around about 0.6.
+
+<<day14, fig.cap='Simulated proportional scores at day 14 for the two groups. The red and blue lines indicates the true values.', message=FALSE>>=
+mu14.1 <- exp(mle.1$par1 + mle.1$par2 * 14) / (exp(mle.1$par1 + mle.1$par2 * 14) + 1)
+mu14.2 <- exp(mle.2$par1 + mle.2$par2 * 14) / (exp(mle.2$par1 + mle.2$par2 * 14) + 1)
+
+sim14.1 <-  rbeta(100, shape1=mu14.1*mle.1$phi, shape2=(1 - mu14.1)*mle.1$phi)
+sim14.2 <-  rbeta(100, shape1=mu14.2*mle.2$phi, shape2=(1 - mu14.2)*mle.2$phi)
+
+p1 <- qplot(sim14.1, geom = "histogram") + geom_vline(xintercept = meat.data[28,2], colour = "red") + ggtitle("Simulated Proportional Scores at Day 14 for Groups 1 and 2") + xlim(c(0, 1)) + xlab("Proportional Score")
+p2 <- qplot(sim14.2, geom = "histogram") + geom_vline(xintercept = meat.data[28,3], colour = "blue") + xlim(c(0, 1)) + xlab("Proportional Score")
+
+grid.arrange(p1, p2, nrow = 2)
+@
