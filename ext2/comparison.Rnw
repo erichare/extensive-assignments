@@ -26,11 +26,11 @@ grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
 @
 
 \subsection{Compared to an SLR with Transformed Response}
-We also fit a simple linear regression by transforming the response variables using the logit function. We did so in an attempt to make the data more closely resemble a normal distribution. Figure \ref{fig:transform} illustrates the result of the transformation by plotting histograms of the response variables for each group. Figure \ref{fig:transform2} shows the model fit results and residual plots for this new model. This seems to do a much better job of explaining the variability in group 1, but for group 2 the residuals exhibit a serious trend.
+We also fit a simple linear regression by transforming the response variables using the angular transformation, where $y' = \sin^{-1}(\sqrt{y})$. We did so in an attempt to make the data more closely resemble a normal distribution. Figure \ref{fig:transform} illustrates the result of the transformation by plotting histograms of the response variables for each group. Figure \ref{fig:transform2} shows the model fit results and residual plots for this new model. This seems to do a much better job of explaining the variability in group 1, but for group 2 the residuals exhibit a noticeable v trend in which the model once again is underestimating scores at lower times, and overestimating them in the middle, including day 14.
 
 <<transform, message=FALSE, fig.cap='Original and Transformed response variable (scores) for the two groups.'>>=
-meat.data$transscore1 <- log(meat.data$score1 / (1 - meat.data$score1))
-meat.data$transscore2 <- log(meat.data$score2 / (1 - meat.data$score2))
+meat.data$transscore1 <- asin(sqrt(meat.data$score1))
+meat.data$transscore2 <- asin(sqrt(meat.data$score2))
 
 p1 <- qplot(score1, geom = "histogram", data = meat.data, fill = I("red")) + ggtitle("Original Data")
 p2 <- qplot(transscore1, geom = "histogram", data = meat.data, fill = I("red")) + ggtitle("Transformed Data")
