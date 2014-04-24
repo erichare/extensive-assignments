@@ -1,8 +1,7 @@
 \section{Model Formulation}
 
-Let $Y_{ij}$ be the proportional score of steak i in group j, i = 1,..,50 j = 1,2 \\
+Let $Y_{ij}$ be the proportional score of the steak corresponding to time i and group j, i = 1,..,50 j = 1,2 \\
 Let $X_{ij}$ be the storage time for steak i,j \\
-Assume $Y_{ij}$ is independent over i and j. \\ \\
 
 We assume $Y_{ij} \sim \text{Beta}(\alpha_{ij}, \beta_{ij})$, and hence we can write the density as: \\
 
@@ -27,7 +26,6 @@ Var(Y_{ij}) &= \frac{\alpha_{ij}\beta_{ij}}{(\alpha_{ij} + \beta_{ij})^2(\alpha_
 \end{align*}
 
 It may also be desired to write $\alpha_{ij}$ and $\beta_{ij}$ in terms of the parameters $\mu_{ij}$ and $\phi_j$ for future clarity:
-
 
 \begin{align*}
 \alpha_{ij} &= \mu_{ij}\phi_j \\
