@@ -1,1 +1,3 @@
 \section{Conclusion}
+
+In conclusion, our results suggest that this new method of packaging is not preferable. By the typical shelf-life of 14 days, a steak undergoing the standard packaging method is likely to be of higher quality, and beyond 14 days this difference is even more stark. In general, the variance in quality is higher for the new method, and our model does a good job at capturing this. While a simple linear regression model, in particular, with a angular transformed response variable seems to be a good fit for the first group, it is not for the second group, and hence we seem to have gained a better fit by performing a beta regression.
