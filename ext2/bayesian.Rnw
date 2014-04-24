@@ -19,7 +19,7 @@ We sample from this distribution by using Metropolis-within-Gibbs sampling, usin
 p(\beta_0,\beta_1 |  \underaccent{\tilde}{y},\underaccent{\tilde}{x}, \phi)  & \propto \prod_{i=1}^n \frac{\Gamma(\phi)}{\Gamma(\mu_{i}\phi)\Gamma((1 - \mu_{i})\phi)}y_{i}^{\mu_{i}\phi - 1}(1 - y_{i})^{(1 - \mu_{i})\phi - 1} \\
 p(\phi |  \underaccent{\tilde}{y},\underaccent{\tilde}{x}, \beta_0,\beta_1) & \propto \left[\prod_{i=1}^n \frac{\Gamma(\phi)}{\Gamma(\mu_{i}\phi)\Gamma((1 - \mu_{i})\phi)}y_{i}^{\mu_{i}\phi - 1}(1 - y_{i})^{(1 - \mu_{i})\phi - 1}\right] \times \phi^{0.01-1}e^{-0.01\phi}
 \end{align*}
-The code for our Metropolis-within-Gibbs sampler is given below. Note that we are using a normal proposal distribution for $\beta_0,\beta_1$ and a symmetric proposal distribution for $\phi$.  We chose a symmetric proposal distribution for $\phi$ because the Gamma distribution does not have a mean parameter like the normal distribution, so it was harder and more variable to incorporate the the previous sampling value into the proposal distribution.    
+The code for our Metropolis-within-Gibbs sampler is given below. Note that we are using a normal proposal distribution for $\beta_0,\beta_1$ and a symmetric proposal distribution for $\phi$.  We could not, however, choose a normal for the proposal distribution for $\phi$ because we need to restrict it to the positive real line. We tried a truncated normal proposal, but found more success with a symmetric Gamma proposal.  We chose a symmetric proposal distribution for $\phi$ because the Gamma distribution does not have a mean parameter like the normal distribution, so it was harder and more variable to incorporate the the previous sampling value into the proposal distribution.    
 
 <<metro.in.gibbs,echo=TRUE>>=
 #likelihood function
@@ -138,7 +138,7 @@ run3.both<-run_mcmc(y3,x3,c(3,-3),15,n.reps=1e4)
 betas.both<-rbind(run1.both[[1]],run2.both[[1]],run3.both[[1]])
 phi.both<-rbind(run1.both[[2]],run2.both[[2]],run3.both[[2]])
 @
-<<table_medians,results='asis'>>=
+<<table_medians,results='asis',fig.cap='Posterior medians of beta0,beta1,phi'>>=
 #plots of draws
 library(xtable)
 meds.score1<-c(median(betas.score1[,1]),median(betas.score1[,2]),median(phi.score1))
@@ -149,9 +149,9 @@ rownames(medians)<-c('Group1','Group2','Combined')
 names(medians)<-c('beta0','beta1','phi')
 
 medians<-medians
-print(xtable(medians))
+print(xtable(medians,label = "tbl:post.meds", caption = 'Posterior medians from MCMC'))
 @
-The posterior medians, which we are using as the parameter estimates throughout this section, are similar to the MLEs, but they do not match as closely as we would like. This is especially true for the estimates of $\phi$.
+The posterior medians, which we are using as the parameter estimates throughout this section, are similar to the MLEs, but they do not match as closely as we would like. This is especially true for the estimates of $\phi$. In Figure \ref{fig:plots}, it is clear that the posterior distributions of $\phi$ have much larger variance than the posterior distributions for $\beta_0,\beta_1$ in all three cases.  This is most likely due to the proposal distribution used in the the Metropolis-Hastings step. If we were to do this project again, we would try to use a different proposal distribution that can be updated like those of $\beta_0,\beta_1$ in order to get better estimates of $\phi$. 
 <<plots,warning=FALSE,message=FALSE,fig.cap='Posterior Distributions of the Parameter Values'>>=
 library(ggplot2)
 library(gridExtra)
@@ -176,6 +176,8 @@ p9 <- qplot(phi.both, geom = "histogram", binwidth = .25,
     main = "phi - both scores") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(phi.both),color='red')
 grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9)
 @
+\clearpage
+
 \subsection{Model Checking}
 <<post.simulation>>=
 #quantities of interest: # less than .10, # greater than .90, value at time 14
@@ -230,6 +232,33 @@ pval1.both<-length(which(lowvals.both>=tstat.lvals.both))/length(lowvals.both)
 pval2.both<-length(which(hivals.both<=tstat.hvals.both))/length(hivals.both)
 pval3.both<-length(which(both.14>=tstat.both.14))/length(both.14)
 @
+To assess the fit of the Bayesian model, we simulated 10,000 samples of size 50 corresponding to each covariate (time) value from each of the 2 one-group models by using the posterior medians as plug-in estimates for $\beta_0,\beta_1$, and $\phi$, and did the same thing with sample size of 100 for the combined group.  We then assessed the fit of these models by looking at the number of extreme values in the sample and the score at time point 14.  The quantities of interest are:
+\begin{itemize}
+\item Number of scores in the sample less than or equal to 0.10
+\item Number of scores in the sample greater than or equal to 0.90
+\item Score at time 14
+\end{itemize}
+The values for the two groups and the average of the two groups for the combined model are given in Table \ref{tbl:teststat}.
+<<test_stat,fig.cap='Quantities of Interest for the meat data',results='asis'>>=
+ts.both<-c(tstat.lvals.both,tstat.hvals.both,tstat.both.14)
+ts.score2<-c(tstat.lvals.score2,tstat.hvals.score2,tstat.score2.14)
+ts.score1<-c(tstat.lvals.score1,tstat.hvals.score1,tstat.score1.14)
+test.stats<-data.frame(rbind(ts.score1,ts.score2,ts.both))
+names(test.stats)<-c('# <= 0.1', '# >= 0.9','Score.14')
+rownames(test.stats)<-c('Group 1','Group 2', "Combined")
+print(xtable(test.stats,digits=0,label = "tbl:teststat", caption = 'Values of the 3 quantities of interest in the 3 different models'))
+@
+
+We plotted histograms of the sampled values in Figure \ref{fig:post.plots} with the test statistic plotted on top as a vertical red line.  The quantities for the data are all within the sampling distributions of the quantities of interest, but some are more extreme than others.  The first two quantities of interest in the combined group plots, for example, are in the tails of their respective sampling distributions, suggesting that the model does not fit the data well at that point.  To better assess the fit, we calculated p-values for each quantity of interest at each sample as follows:
+  $$ p_{ij} = \frac{1}{M}\sum\limits_{m=1}^M \mathbb{I}(q_{im} \geq T_{ij}) \quad \text{and} \quad p_{2j} = \frac{1}{M}\sum\limits_{m=1}^M \mathbb{I}(q_{2m} \geq T_{2j})$$
+where $M$ is the sample size, 10,000, $i=1,3$ indexes the quantity of interest (number less than or equal to 0.10 and value at 14, respectively), and $j= 1,2,3$ indexes the data set fitted (Group 1, Group 2, and Combined), respectively. Furthermore, $q_{im}$ is the value of the $i^{th}$ quantity of interest in the $m^{th}$ sample, and $T_{ij}$ is the value of the $i^{th}$ quantity of interest in the $j^{th}$ data set.  These values are given in Table \ref{tbl:pvals}.  
+
+<<pvals.posts,results='asis'>>=
+pvalues<-data.frame(rbind(c(pval1.score1,pval2.score1,pval3.score1), c(pval1.score2,pval2.score2,pval3.score2),c(pval1.both,pval2.both,pval3.both)))
+names(pvalues)<-c('<=0.1','>=0.9','Score.14')
+rownames(pvalues)<-c('Group1','Group2','Combined')
+print(xtable(pvalues,label = 'tbl:pvals', caption = 'Posterior predictive p-values for the 3 quantities of interest in the 3 different models'))
+@
 <<post.plots,fig.cap='Values of the quantities of interest posterior predictive samples'>>=
 h1<-qplot(lowvals.score1,geom='bar',binwidth=1,main='Number <= 0.1 in Predictive Samples')+geom_vline(xintercept=tstat.lvals.score1,color='red')+theme(text = element_text(size = 7))
 h2<-qplot(hivals.score1,geom='bar',binwidth=1,main='Number >= 0.9 in Predictive Samples')+geom_vline(xintercept=tstat.hvals.score1,color='red')+theme(text = element_text(size = 7))
@@ -246,13 +275,7 @@ h9<-qplot(both.14,geom='histogram',binwidth=.02,main='Score at time 14 in Predic
 grid.arrange(h1,h2,h3,h4,h5,h6,h7,h8,h9)
 @
 
-<<pvals.posts,results='asis'>>=
-pvalues<-data.frame(rbind(c(pval1.score1,pval2.score1,pval3.score1), c(pval1.score2,pval2.score2,pval3.score2),c(pval1.both,pval2.both,pval3.both)))
-names(pvalues)<-c('<=0.1','>=0.9','Score.14')
-rownames(pvalues)<-c('Group1','Group2','Combined')
-print(xtable(pvalues))
-@
-
+As we can see by looking at the plots and at the distributions of the posterior samples, the estimates we arrived at through our Bayesian methodology do not fit the combined data at all. Additionally, although the posterior predictive p-values for Group 1 and Group 2 are not significant at a 0.05 level, they are very close to being significant at the 0.10 level.  This means that although there is some evidence to suggest that our model fits the data well, the evidence is not very strong, and at the right credible level, our model could be rejected as not fitting the data at all. This was not surprising to us after we saw that the posterior median estimates differed from the MLEs more than we were hoping for.  
 
 <<jags.check, cache=TRUE,warning=FALSE,message=FALSE,results='hide'>>=
 model<-"model{
@@ -297,9 +320,9 @@ names(medians.jags)<-c('beta0','beta1','phi')
 medians.jags$Group<-c('Score1','Score2','Combined')
 medians.jags<-medians.jags[,c(4,1:3)]
 @
-We compared this to running the same model in the rjags package.  The JAGS posterior medians were much closer to the MLEs than our MCMC posterior medians.  
+Finally, we compared the results of our MCMC to running the same model in the rjags package (see code appendix).  The JAGS posterior medians were much closer to the MLEs than our MCMC posterior medians, as shown in Table \ref{tbl:jags}.  So, in the future, we will stick to running our Bayesian samplers in JAGS.   
 <<jags_medians,results='asis'>>=
-print(xtable(medians.jags))
+print(xtable(medians.jags, label = 'tbl:jags', caption = 'JAGS Posterior Medians'))
 @
       
 
