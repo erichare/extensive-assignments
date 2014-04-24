@@ -145,11 +145,13 @@ meds.score1<-c(median(betas.score1[,1]),median(betas.score1[,2]),median(phi.scor
 meds.score2<-c(median(betas.score2[,1]),median(betas.score2[,2]),median(phi.score2))
 meds.both<-c(median(betas.both[,1]),median(betas.both[,2]),median(phi.both))
 medians<-data.frame(rbind(meds.score1,meds.score2,meds.both))
+rownames(medians)<-c('Group1','Group2','Combined')
 names(medians)<-c('beta0','beta1','phi')
-medians$Group<-c('Score1','Score2','Combined')
+
 medians<-medians[,c(4,1:3)]
 print(xtable(medians))
 @
+The posterior medians, which we are using as the parameter estimates throughout this section, are similar to the MLEs, but they do not match as closely as we would like. This is especially true for the estimates of $\phi$.
 <<plots,warning=FALSE,message=FALSE>>=
 library(ggplot2)
 library(gridExtra)
