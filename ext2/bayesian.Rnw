@@ -148,11 +148,11 @@ medians<-data.frame(rbind(meds.score1,meds.score2,meds.both))
 rownames(medians)<-c('Group1','Group2','Combined')
 names(medians)<-c('beta0','beta1','phi')
 
-medians<-medians[,c(4,1:3)]
+medians<-medians
 print(xtable(medians))
 @
 The posterior medians, which we are using as the parameter estimates throughout this section, are similar to the MLEs, but they do not match as closely as we would like. This is especially true for the estimates of $\phi$.
-<<plots,warning=FALSE,message=FALSE>>=
+<<plots,warning=FALSE,message=FALSE,fig.cap='Posterior Distributions of the Parameter Values'>>=
 library(ggplot2)
 library(gridExtra)
 p1 <- qplot(betas.score1[,1], geom = "histogram", binwidth = 0.05,
@@ -176,6 +176,7 @@ p9 <- qplot(phi.both, geom = "histogram", binwidth = .25,
     main = "phi - both scores") + theme(text = element_text(size = 10)) + geom_vline(xintercept=median(phi.both),color='red')
 grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9)
 @
+\subsection{Model Checking}
 <<post.simulation>>=
 #quantities of interest: # less than .10, # greater than .90, value at time 14
 
@@ -228,7 +229,8 @@ tstat.both.14<-mean(c(tstat.score1.14,tstat.score2.14))
 pval1.both<-length(which(lowvals.both>=tstat.lvals.both))/length(lowvals.both)
 pval2.both<-length(which(hivals.both<=tstat.hvals.both))/length(hivals.both)
 pval3.both<-length(which(both.14>=tstat.both.14))/length(both.14)
-
+@
+<<post.plots,fig.cap='Values of the quantities of interest posterior predictive samples'>>=
 h1<-qplot(lowvals.score1,geom='bar',binwidth=1,main='Number <= 0.1 in Predictive Samples')+geom_vline(xintercept=tstat.lvals.score1,color='red')+theme(text = element_text(size = 7))
 h2<-qplot(hivals.score1,geom='bar',binwidth=1,main='Number >= 0.9 in Predictive Samples')+geom_vline(xintercept=tstat.hvals.score1,color='red')+theme(text = element_text(size = 7))
 h3<-qplot(score1.14,geom='histogram',binwidth=.02,main='Score at time 14 in Predictive Samples')+geom_vline(xintercept=tstat.score1.14,color='red')+theme(text = element_text(size = 7))
