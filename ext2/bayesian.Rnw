@@ -254,7 +254,7 @@ print(xtable(pvalues))
 @
 
 
-<<jags.check, cache=TRUE,warning=FALSE,message=FALSE>>=
+<<jags.check, cache=TRUE,warning=FALSE,message=FALSE,results='hide'>>=
 model<-"model{
   for (i in 1:N){
     y[i]~dbeta(alpha[i],beta[i])
